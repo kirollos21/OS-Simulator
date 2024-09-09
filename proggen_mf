@@ -1,13 +1,17 @@
 CC = gcc
 CFLAGS = -Wall -std=c99 -pedantic
 
-OBJ = configops.o metadataops.o simulator.o
+# Object files
+OBJ = configops.o metadataops.o simulator.o Sim01.o
 
+# Output executable name
 TARGET = Sim01
 
+# Rule to build the program
 $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ)
 
+# Rule to build individual object files
 configops.o: configops.c configops.h
 	$(CC) $(CFLAGS) -c configops.c
 
@@ -17,5 +21,9 @@ metadataops.o: metadataops.c metadataops.h
 simulator.o: simulator.c simulator.h
 	$(CC) $(CFLAGS) -c simulator.c
 
+Sim01.o: Sim01.c configops.h metadataops.h simulator.h
+	$(CC) $(CFLAGS) -c Sim01.c
+
+# Clean up the object files
 clean:
 	rm -f $(OBJ) $(TARGET)
