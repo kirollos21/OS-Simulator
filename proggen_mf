@@ -1,0 +1,21 @@
+CC = gcc
+CFLAGS = -Wall -std=c99 -pedantic
+
+OBJ = configops.o metadataops.o simulator.o
+
+TARGET = Sim01
+
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ)
+
+configops.o: configops.c configops.h
+	$(CC) $(CFLAGS) -c configops.c
+
+metadataops.o: metadataops.c metadataops.h
+	$(CC) $(CFLAGS) -c metadataops.c
+
+simulator.o: simulator.c simulator.h
+	$(CC) $(CFLAGS) -c simulator.c
+
+clean:
+	rm -f $(OBJ) $(TARGET)
