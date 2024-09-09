@@ -7,7 +7,7 @@ int readConfigFile(const char *fileName, ConfigDataType *configData) {
     FILE *filePtr = fopen(fileName, "r");
     char line[LARGE_STR_LEN];
     if (filePtr == NULL) {
-        return -1; // Error opening file
+        return -1;
     }
 
     while (fgets(line, LARGE_STR_LEN, filePtr) != NULL) {
@@ -57,5 +57,5 @@ int readConfigFile(const char *fileName, ConfigDataType *configData) {
     }
 
     fclose(filePtr);
-    return 0; // Success
+    return 0;
 }

@@ -9,21 +9,18 @@ int readMetaDataFile(const char *fileName, OpCodeType **opCodeData) {
     OpCodeType *newNode, *currentNode;
     
     if (filePtr == NULL) {
-        return -1; // Error opening file
+        return -1;
     }
 
-    // Initialize the linked list
     *opCodeData = NULL;
 
-    // Parse the file contents line by line
     while (fgets(line, STR_ARG_LEN, filePtr) != NULL) {
         newNode = (OpCodeType *)malloc(sizeof(OpCodeType));
         if (newNode == NULL) {
             fclose(filePtr);
-            return -1; // Memory allocation error
+            return -1;
         }
 
-        // Parse each line into the OpCodeType structure
         sscanf(line, "/pid: %d/cmd: %s/io: %s/arg1: %s/arg2: %d/arg3: %d", 
                 &newNode->pid, 
                 newNode->command, 
@@ -34,18 +31,17 @@ int readMetaDataFile(const char *fileName, OpCodeType **opCodeData) {
 
         newNode->nextNode = NULL;
 
-        // Add the new node to the linked list
         if (*opCodeData == NULL) {
-            *opCodeData = newNode; // First node
+            *opCodeData = newNode;
         } else {
             currentNode = *opCodeData;
             while (currentNode->nextNode != NULL) {
-                currentNode = currentNode->nextNode; // Traverse to the end
+                currentNode = currentNode->nextNode;
             }
-            currentNode->nextNode = newNode; // Add the new node to the end
+            currentNode->nextNode = newNode;
         }
     }
 
     fclose(filePtr);
-    return 0; // Success
+    return 0;
 }

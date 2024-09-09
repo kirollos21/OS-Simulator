@@ -8,21 +8,17 @@ int main(int argc, char *argv[]) {
     ConfigDataType configData;
     OpCodeType *opCodeData = NULL;
 
-    // Check if the correct number of arguments is provided
     if (argc < 3) {
         printf("Usage: %s <-dc|-dm|-rs> <config_file.cnf>\n", argv[0]);
         return 1;
     }
 
-    // Read configuration file
     if (readConfigFile(argv[2], &configData) == -1) {
         printf("Error reading configuration file: %s\n", argv[2]);
         return 1;
     }
 
-    // Handle the -dc, -dm, and -rs arguments
     if (strcmp(argv[1], "-dc") == 0) {
-        // Display configuration data
         printf("Config File Display\n");
         printf("-------------------\n");
         printf("Version: %.2f\n", configData.version);
@@ -37,13 +33,11 @@ int main(int argc, char *argv[]) {
         printf("Log To File Name: %s\n", configData.logToFileName);
     } 
     else if (strcmp(argv[1], "-dm") == 0) {
-        // Read and display meta-data file
         if (readMetaDataFile(configData.metaDataFileName, &opCodeData) == -1) {
             printf("Error reading meta-data file: %s\n", configData.metaDataFileName);
             return 1;
         }
 
-        // Display meta-data file content
         printf("Meta-Data File Display\n");
         printf("----------------------\n");
         OpCodeType *currentOp = opCodeData;
@@ -54,7 +48,6 @@ int main(int argc, char *argv[]) {
         }
     } 
     else if (strcmp(argv[1], "-rs") == 0) {
-        // Run simulation
         runSim();
     } 
     else {
