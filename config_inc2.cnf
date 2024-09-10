@@ -1,0 +1,12 @@
+Start Simulator Configuration File:
+Version/Phase                     : 7.02
+File Path                         : metadata2.mdf
+CPU Scheduling Code               : FCFS-N
+Quantum Time (cycles)             : 10
+Memory Available (KB)             : 20480
+Memory Display (On/Off)           : On
+Processor Cycle Time (msec)       : 15
+I/O Cycle Time (msec)             : 30
+Log To                            : Both
+Log File Path                     : logfile2.lgf
+End Simulator Configuration File.

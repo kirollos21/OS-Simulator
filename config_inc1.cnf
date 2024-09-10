@@ -1,0 +1,12 @@
+Start Simulator Configuration File:
+Version/Phase                     : 6.00
+File Path                         : metadata1.mdf
+CPU Scheduling Code               : XYZ-P   # Invalid CPU Scheduling Code
+Quantum Time (cycles)             : -15     # Invalid Quantum Time
+Memory Available (KB)             : 1000000 # Memory out of range
+Memory Display (On/Off)           : Invalid # Invalid Memory Display value
+Processor Cycle Time (msec)       : 0       # Invalid Processor Cycle Time
+I/O Cycle Time (msec)             : -50     # Invalid I/O Cycle Time
+Log To                            : Screen  # Invalid Log To value
+Log File Path                     : logfile_invalid1.lgf
+End Simulator Configuration File.

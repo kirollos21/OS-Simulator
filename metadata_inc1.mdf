@@ -1,0 +1,12 @@
+Start Program Meta-Data Code:
+sys start
+app start, 0
+dev in, usb, 10
+dev out, monitor, 50
+mem allocate, 3000, 1500
+cpu process, 10
+cpu process, 12
+dev out, video signal, 40
+app end
+sys end
+End Program Meta-Data Code.

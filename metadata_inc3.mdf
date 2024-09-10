@@ -1,0 +1,10 @@
+Start Program Meta-Data Code:
+sys start
+app start, 0
+dev in, unknown_device, 60   # Invalid device
+dev out, monitor, -50        # Negative time
+mem allocate, -5000, 2000    # Negative memory allocation
+cpu process, -20             # Negative CPU time
+app end
+sys end
+End Program Meta-Data Code.

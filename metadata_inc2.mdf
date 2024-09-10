@@ -1,0 +1,10 @@
+Start Program Meta-Data Code:
+sys start
+app start, 0
+dev in, unknown_device, 50  # Invalid device type
+dev out, monitor, -30       # Invalid operation time
+mem allocate, -3000, 1500   # Invalid memory allocation
+cpu process, -10            # Invalid CPU cycle time
+app end
+sys end
+End Program Meta-Data Code.
