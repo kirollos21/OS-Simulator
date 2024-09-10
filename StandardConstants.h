@@ -1,9 +1,7 @@
-//
-//  StandardConstants.h
-//  Sim01
-//
-//  Created by Youssef Elmahdy on 05/09/2024.
-//
+//  File: StandardConstants.h
+//  Project: Sim01
+//  Name: Kirollos Zikry
+//  Date: 09/06/2024
 
 // Preprocessor directives
 #ifndef StandardConstants_h
@@ -59,4 +57,4 @@
 // constant for substring search failure
 #define SUBSTRING_NOT_FOUND -1
 
-#endif /* StandardConstants_h */
+#endif

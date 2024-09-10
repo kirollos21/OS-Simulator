@@ -1,9 +1,7 @@
-//
-//  simulator.c
-//  Sim01
-//
-//  Created by Youssef Elmahdy on 05/09/2024.
-//
+//  File: simulator.c
+//  Project: Sim01
+//  Name: Kirollos Zikry 
+//  Date: 09/08/2024
 
 #include "simulator.h"
 
@@ -18,7 +16,9 @@ Device Input/device: none
 Device Output/device: none
 Dependencies: tbd
 */
-void runSim (ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr){
-    // stub function
-    // void function, no return
+void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
+{
+	// stub function
+	// void function, no return
+	printf("runSim called here\n");
 }

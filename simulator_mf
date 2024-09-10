@@ -1,3 +1,8 @@
+#  File: simulator_mf
+#  Project: Sim01
+#  Name: Kirollos Zikry
+#  Date: 09/09/2024
+
 CC = gcc
 DEBUG = -g
 CFLAGS = -Wall -std=c99 -pedantic -c $(DEBUG)

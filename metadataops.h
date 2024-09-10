@@ -1,19 +1,13 @@
-//
-//  metadataops.h
-//  Sim01
-//
-//  Created by Youssef Elmahdy on 05/09/2024.
-//
+//  File: metadataops.h
+//  Project: Sim01
+//  Name: Kirollos Zikry
+//  Date: 09/07/2024 & 09/08/2024
 
 #ifndef metadataops_h
 #define metadataops_h
-
-
-// header files
 #include "datatypes.h"
 #include "StandardConstants.h"
 #include "StringUtils.h"
-
 
 // constants
 typedef enum { BAD_ARG_VAL = -1,
@@ -25,10 +19,25 @@ typedef enum { BAD_ARG_VAL = -1,
                CORRUPT_OPCMD_ARG_ERR,
                UNBALANCED_START_END_ERR,
                COMPLETE_OPCMD_FOUND_MSG,
-               LAST_OPCMD_FOUND_MSG  } OpCodeMessages;
-
+               LAST_OPCMD_FOUND_MSG
+             } OpCodeMessages;
 
 // function prototypes
+
+/*
+Name: getOpCommand
+Process: acquires one op command line from a previously opened file,
+         parses it, and sets various struct members according
+         to the three letter command
+Function Input/Parameters: pointer to open file handle (FILE *)
+Function Output/Parameters: pointer to one op code struct (OpCodeType *)
+Function Output/Returned: coded result of operation (OpCodeMessages)
+Device Input/File: op code line uploaded
+Device Output/Device: none
+Dependencies: getStringToDelimiter, getCommand, copyString, verifyValidCommand,
+              compareString, getStringArg, verifyFirstStringArg, getNumberArg
+*/
+OpCodeMessages getOpCommand(FILE *filePtr, OpCodeType *inData);
 
 /*
 Name: addNode
@@ -42,8 +51,7 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: malloc, copyString
 */
-OpCodeType *addNode( OpCodeType *localPtr, OpCodeType *newNode );
-
+OpCodeType *addNode(OpCodeType *localPtr, OpCodeType *newNode);
 
 /*
 Name: clearMetaData
@@ -55,7 +63,7 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: tbd
 */
-OpCodeType *clearMetaDataList( OpCodeType *localPtr );
+OpCodeType *clearMetaDataList(OpCodeType *localPtr);
 
 /*
 Name: displayMetaData
@@ -68,7 +76,7 @@ Device Input/Keyboard: none
 Device Output/Monitor: displayed as specified
 Dependencies: printf, compareString
 */
-void displayMetaData( const OpCodeType *localPtr );
+void displayMetaData(const OpCodeType *localPtr);
 
 /*
 Name: getCommand
@@ -82,7 +90,7 @@ Device Input/File: none
 Device Output/Device: none
 Dependencies: none
 */
-int getCommand( char *cmd, const char *inputStr, int index );
+int getCommand(char *cmd, const char *inputStr, int index);
 
 /*
 Name: getMetaData
@@ -100,25 +108,7 @@ Dependencies: copyString, fopen, getStringToDelimiter, compareString, fclose,
               malloc, getOpCommand, updateStartCount, updateEndCount,
               clearMetaDataList, free, addNode
 */
-bool getMetaData( const char *fileName,
-                              OpCodeType **opCodeDataHead, char *endStateMsg );
-
-
-/*
-Name: getOpCommand
-Process: acquires one op command line from a previously opened file,
-         parses it, and sets various struct members according
-         to the three letter command
-Function Input/Parameters: pointer to open file handle (FILE *)
-Function Output/Parameters: pointer to one op code struct (OpCodeType *)
-Function Output/Returned: coded result of operation (OpCodeMessages)
-Device Input/File: op code line uploaded
-Device Output/Device: none
-Dependencies: getStringToDelimiter, getCommand, copyString, verifyValidCommand,
-              compareString, getStringArg, verifyFirstStringArg, getNumberArg
-*/
-OpCodeMessages getOpCommand( FILE *filePtr, OpCodeType *inData );
-
+bool getMetaData(const char *fileName, OpCodeType **opCodeDataHead, char *endStateMsg);
 
 /*
 Name: getNumberArg
@@ -131,8 +121,7 @@ Device Input/File: none
 Device Output/Device: none
 Dependencies: isDigit
 */
-int getNumberArg( int *number, const char *inputStr, int index );
-
+int getNumberArg(int *number, const char *inputStr, int index);
 
 /*
 Name: getStringArg
@@ -145,8 +134,7 @@ Device Input/File: none
 Device Output/Device: none
 Dependencies: none
 */
-int getStringArg( char *strArg, const char *inputStr, int index );
-
+int getStringArg(char *strArg, const char *inputStr, int index);
 
 /*
 Name: isDigit
@@ -159,8 +147,7 @@ Device Input/File: none
 Device Output/Device: none
 Dependencies: none
 */
-bool isDigit( char testChar );
-
+bool isDigit(char testChar);
 
 /*
 Name: updateEndCount
@@ -175,8 +162,7 @@ Device Input/File: none
 Device Output/Device: none
 Dependencies: captureString
 */
-int updateEndCount( int count, const char *opString );
-
+int updateEndCount(int count, const char *opString);
 
 /*
 Name: updateStartCount
@@ -191,8 +177,7 @@ Device Input/File: none
 Device Output/Device: none
 Dependencies: captureString
 */
-int updateStartCount( int count, const char *opString );
-
+int updateStartCount(int count, const char *opString);
 
 /*
 Name: verifyFirstStringArg
@@ -204,8 +189,7 @@ Device Input/File: none
 Device Output/Device: none
 Dependencies: compareString
 */
-bool verifyFirstStringArg( const char *strArg );
-
+bool verifyFirstStringArg(const char *strArg);
 
 /*
 Name: verifyValidCommand
@@ -217,8 +201,6 @@ Device Input/File: none
 Device Output/Device: none
 Dependencies: compareString
 */
-bool verifyValidCommand( char *testCmd );
+bool verifyValidCommand(char *testCmd);
 
-
-
-#endif /* metadataops_h */
+#endif

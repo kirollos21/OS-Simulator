@@ -1,14 +1,10 @@
-//
-//  datatypes.h
-//  Sim01
-//
-//  Created by Youssef Elmahdy on 05/09/2024.
-//
+//  File: datatypes.h
+//  Project: Sim01
+//  Name: Kirollos Zikry
+//  Date: 09/07/2024
 
-// protect from multiple compiling
 #ifndef datatypes_h
 #define datatypes_h
-
 #include <stdio.h>
 #include <stdbool.h>
 #include "StandardConstants.h"
@@ -57,7 +53,4 @@ typedef struct OpCodeType
     struct OpCodeType *nextNode; // pointer to next node as needed
 } OpCodeType;
 
-
-
-
-#endif /* datatypes_h */
+#endif
