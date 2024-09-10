@@ -22,9 +22,6 @@ configops.o : configops.c configops.h
 StringUtils.o : StringUtils.c StringUtils.h
 	$(CC) $(CFLAGS) StringUtils.c
 
-simtimer.o : simtimer.c simtimer.h
-	$(CC) $(CFLAGS) simtimer.c
-
 clean:
 	\rm *.o sim01
 
