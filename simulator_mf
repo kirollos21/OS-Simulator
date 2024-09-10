@@ -4,8 +4,8 @@ CFLAGS = -Wall -std=c99 -pedantic -c $(DEBUG)
 LFLAGS = -Wall -std=c99 -pedantic $(DEBUG)
 VALGRIND = valgrind --leak-check=full --show-leak-kinds=all
 
-Simulator : OS_SimDriver.o simulator.o metadataops.o configops.o StringUtils.o simtimer.o
-	$(CC) $(FLAGS) OS_SimDriver.o simulator.o metadataops.o configops.o StringUtils.o simtimer.o -o sim02
+Simulator : OS_SimDriver.o simulator.o metadataops.o configops.o StringUtils.o
+	$(CC) $(FLAGS) OS_SimDriver.o simulator.o metadataops.o configops.o StringUtils.o -o sim01
 
 OS_SimDriver.o : OS_SimDriver.c
 	$(CC) $(CFLAGS) OS_SimDriver.c
