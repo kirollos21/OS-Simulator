@@ -1,12 +1,12 @@
 Start Simulator Configuration File:
 Version/Phase                     : 7.02
 File Path                         : metadata2.mdf
-CPU Scheduling Code               : FCFS-N
-Quantum Time (cycles)             : 10
-Memory Available (KB)             : 20480
-Memory Display (On/Off)           : On
-Processor Cycle Time (msec)       : 15
-I/O Cycle Time (msec)             : 30
-Log To                            : Both
-Log File Path                     : logfile2.lgf
+CPU Scheduling Code               : XYZ-P   # Invalid CPU Scheduling Code
+Quantum Time (cycles)             : -15     # Invalid Quantum Time
+Memory Available (KB)             : 1000000 # Memory out of range
+Memory Display (On/Off)           : Invalid # Invalid value
+Processor Cycle Time (msec)       : -5      # Negative processor time
+I/O Cycle Time (msec)             : -15     # Negative I/O time
+Log To                            : Screen  # Incorrect Log To value
+Log File Path                     : logfile_inc3.lgf
 End Simulator Configuration File.

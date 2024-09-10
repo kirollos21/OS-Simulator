@@ -2,7 +2,7 @@ Start Program Meta-Data Code:
 sys start
 app start, 0
 dev in, usb, 10
-dev out, monitor, 50
+dev out, monitor, -50	# Invalid operation time
 mem allocate, 3000, 1500
 cpu process, 10
 cpu process, 12
