@@ -1,7 +1,7 @@
 //  File: OS_SimDriver.c
 //  Project: Sim01
 //  Name: Kirollos Zikry
-//  Date: 09/07/2024 & 09/08/2024
+//  Date: 09/07/2024 & 09/08/2024 & 09/09/2024
 
 #include "OS_SimDriver.h"
 
@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 				}
 
 			// check run simulator flag
-			if (cmdLineData.mdDisplayFlag) {
+			if (cmdLineData.runSimFlag) {
 				// run simulator
 				// function: runSim
 				runSim(configDataPtr, metaDataPtr);
