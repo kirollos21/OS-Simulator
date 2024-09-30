@@ -481,10 +481,10 @@ void getOpCode(OpCodeType *metaDataPtr, double timeStamp, int pid, ConfigDataTyp
             if (config->logToCode == LOGTO_FILE_CODE || config->logToCode == LOGTO_BOTH_CODE)
             {
                 // Display the ops to the file
-                fprintf(file, "%1.6f, Process %d, %s %s operation start\n", timeStamp, pid, metaDataPtr->strArg1, metaDataPtr->command);
+                fprintf(file, "%1.6f, Process: %d, %s %s operation start\n", timeStamp, pid, metaDataPtr->strArg1, metaDataPtr->command);
 
                 // Display the end of the ops to the file
-                fprintf(file, "%1.6f, Process %d, %s %s operation end\n", timeStamp, pid, metaDataPtr->strArg1, metaDataPtr->command);
+                fprintf(file, "%1.6f, Process: %d, %s %s operation end\n", timeStamp, pid, metaDataPtr->strArg1, metaDataPtr->command);
             }
 
             // Go to the next MetaData
