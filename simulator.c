@@ -99,6 +99,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
        //lap the time
        elapsedTime = accessTimer(LAP_TIMER, timeStr);
        printf("%1.6f, OS: Simulator end\n", elapsedTime);
+       fflush(file);
        fclose(file);
     //end function
        //return nothing
@@ -356,35 +357,36 @@ void displayToFile(PCB *process, double lapTime, FILE* file)
     {
        //READY
         case READY_STATE:
-            //print ready statment
-               //function: printf
-            fprintf("%1.6f, OS: Process %d set to READY state from NEW state\n",
-                                                        lapTime, process->pid);
+            //print ready statment tofile
+            //function: fprintf
+            fprintf(file, "%1.6f, OS: Process %d set to READY state from NEW state\n", lapTime, process->pid);
+            fflush(file);
             break;
-
-       //RUNNING
+       //Running
         case RUNNING_STATE:
-            //print runnning statment
-                //function: printf
-            fprintf("%1.6f, OS: Process %d selected with %d ms remaining\n",
-                                        lapTime, process->pid, process->time);
-            fprintf("%1.6f, OS: Process %d set from READY to RUNNING\n\n",
-                                                        lapTime, process->pid);
+            //print RUNNING statment tofile
+            //function: fprintf
+            fprintf(file, "%1.6f, OS: Process %d selected with %d ms remaining\n", lapTime, process->pid, process->time);
+            fflush(file);
+            fprintf(file, "%1.6f, OS: Process %d set from READY to RUNNING\n\n", lapTime, process->pid);
+            fflush(file);
             break;
 
-       //EXITING
+       //Exiting
         case EXIT_STATE:
-            //print exiting statment
-               //function: printf
-            fprintf("%1.6f, OS: Process %d ended\n", lapTime, process->pid);
-            fprintf("%1.6f, OS: Process %d set to EXIT\n", 
-                                               lapTime, process->pid);
+            //print EXITING statment to file
+            //function: fprintf
+            fprintf(file, "%1.6f, OS: Process %d ended\n", lapTime, process->pid);
+            fflush(file);
+            fprintf(file, "%1.6f, OS: Process %d set to EXIT\n", lapTime, process->pid);
+            fflush(file);
             break;
        //ERROR
         default:
-            //print error statment
-               //function: printf
-            fprintf("Error: Invalid process state\n");
+            //print error statment to file
+            //function: fprintf
+            fprintf(file, "Error: Invalid process state\n");
+            fflush(file);
             break;
     }
 }
