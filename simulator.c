@@ -23,7 +23,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     PCB *newPCBList = createPCB_List(configPtr, localMetaPtr);
     PCB *wkgPtrPCB = newPCBList;
     char timeStr[10];
-    double elapsedTime = accessTimer(ZERO_TIMER, timeStr);
+    double elapsedTime = accessTimer(0, timeStr);
     FILE* file = fopen(configPtr->logToFileName,"w");
 
 
