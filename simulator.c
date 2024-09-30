@@ -307,34 +307,27 @@ void displayToMonitor(PCB *process, double lapTime)
     {
        //READY
         case READY_STATE:
-            //print ready statment
-               //function: printf
-            printf("%1.6f, OS: Process %d set to READY state from NEW state\n",
-                                                        lapTime, process->pid);
+            //print ready statement
+            printf("%1.6f, OS: Process %d set to READY state from NEW state\n", lapTime, process->pid);
             break;
 
        //RUNNING
         case RUNNING_STATE:
-            //print runnning statment
-                //function: printf
-            printf("%1.6f, OS: Process %d selected with %d ms remaining\n",
-                                        lapTime, process->pid, process->time);
-            printf("%1.6f, OS: Process %d set from READY to RUNNING\n\n",
-                                                        lapTime, process->pid);
+            //print running statement
+            printf("%1.6f, OS: Process %d selected with %d ms remaining\n", lapTime, process->pid, process->time);
+            printf("%1.6f, OS: Process %d set from READY to RUNNING\n\n", lapTime, process->pid);
             break;
 
        //EXITING
         case EXIT_STATE:
-            //print exiting statment
-               //function: printf
+            //print exiting statement
             printf("%1.6f, OS: Process %d ended\n", lapTime, process->pid);
-            printf("%1.6f, OS: Process %d set to EXIT\n", 
-                                               lapTime, process->pid);
+            printf("%1.6f, OS: Process %d set to EXIT\n", lapTime, process->pid);
             break;
+
        //ERROR
         default:
-            //print error statment
-               //function: printf
+            //print error statement
             printf("Error: Invalid process state\n");
             break;
     }
@@ -350,41 +343,39 @@ Device Input/File: None
 Device Output/Device: File
 Dependencies: None
 */
-void displayToFile(PCB *process, double lapTime, FILE* file) 
+void displayToFile(PCB *process, double lapTime, FILE *file) 
 {
    //depending on the currentState - file
     switch (process->currentState) 
     {
        //READY
         case READY_STATE:
-            //print ready statment tofile
-            //function: fprintf
+            //print ready statement to file
             fprintf(file, "%1.6f, OS: Process %d set to READY state from NEW state\n", lapTime, process->pid);
             fflush(file);
             break;
-       //Running
+
+       //RUNNING
         case RUNNING_STATE:
-            //print RUNNING statment tofile
-            //function: fprintf
+            //print RUNNING statement to file
             fprintf(file, "%1.6f, OS: Process %d selected with %d ms remaining\n", lapTime, process->pid, process->time);
             fflush(file);
             fprintf(file, "%1.6f, OS: Process %d set from READY to RUNNING\n\n", lapTime, process->pid);
             fflush(file);
             break;
 
-       //Exiting
+       //EXITING
         case EXIT_STATE:
-            //print EXITING statment to file
-            //function: fprintf
+            //print EXITING statement to file
             fprintf(file, "%1.6f, OS: Process %d ended\n", lapTime, process->pid);
             fflush(file);
             fprintf(file, "%1.6f, OS: Process %d set to EXIT\n", lapTime, process->pid);
             fflush(file);
             break;
+
        //ERROR
         default:
-            //print error statment to file
-            //function: fprintf
+            //print error statement to file
             fprintf(file, "Error: Invalid process state\n");
             fflush(file);
             break;
