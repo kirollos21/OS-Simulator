@@ -305,7 +305,7 @@ void displayToMonitor(PCB *process, double lapTime)
     switch (process->currentState) 
     {
        //READY
-        case RUNNING_STATE:
+        case READY_STATE:
             //print ready statment
                //function: printf
             printf("%1.6f, OS: Process %d set to READY state from NEW state\n",
