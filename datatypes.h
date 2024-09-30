@@ -12,8 +12,8 @@
 // GLOBAL CONSTANTS - may be used in other files
 
 typedef enum {
-    CMD_STR_LEN = 5,
     IO_ARG_STR_LEN = 5,
+    CMD_STR_LEN = 10,
     STR_ARG_LEN = 15
 } OpCodeArrayCapacity;
 
