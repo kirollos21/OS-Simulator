@@ -9,18 +9,6 @@
 #include <stdbool.h>
 #include "StandardConstants.h"
 
-//typedef PCB struct
-
-typedef struct PCB
-{
-    int pid;
-    int time;
-    ProcessState currentState;
-    OpCodeType *mdPtr;
-    struct PCB *nextNode;
-
-}PCB;
-
 // GLOBAL CONSTANTS - may be used in other files
 
 typedef enum {
@@ -64,5 +52,15 @@ typedef struct OpCodeType
     double opEndTime; // size of time string returned from accessTimer
     struct OpCodeType *nextNode; // pointer to next node as needed
 } OpCodeType;
+
+typedef struct PCB
+{
+    int pid;
+    int time;
+    ProcessState currentState;
+    OpCodeType *mdPtr;
+    struct PCB *nextNode;
+
+}PCB;
 
 #endif
