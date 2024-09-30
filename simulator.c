@@ -34,7 +34,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
        while(wkgPtrPCB != NULL)
        {
           //set the process to ready
-          wkgPtrPCB->currentState = READY;
+          wkgPtrPCB->currentState = READY_STATE;
 
           //lap the time
              //function: accessTimer
@@ -55,7 +55,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
             wkgPtrPCB = getNextProcess(wkgPtrPCB,localMetaPtr);
 
             //set to Running
-            wkgPtrPCB->currentState = RUNNING;
+            wkgPtrPCB->currentState = RUNNING_STATE;
 
             //Display remaining time and RUNNING state
                //function: displayRunning
@@ -193,7 +193,7 @@ PCB *createPCB_List ( ConfigDataType *configPtr, OpCodeType *metaData)
             wkgPtrProcess->time = 0.0;
 
             //set state = NEW
-            wkgPtrProcess->currentState = NEW;
+            wkgPtrProcess->currentState = NEW_STATE;
 
             //set pointer to the current md node 
             wkgPtrProcess->mdPtr = metaPtr;
@@ -255,7 +255,7 @@ void displayOpCode( ConfigDataType *configPtr, OpCodeType *metaData, PCB *proces
    getOpCode(metaData, time, process->pid, configPtr, fileName);
 
    // Set state to exiting because we are done with the processer
-   process->currentState = EXITING;
+   process->currentState = EXIT_STATE;
 
    // Display remaining time and correlating state
    displayProcessState(configPtr, process, time, fileName);
@@ -313,7 +313,7 @@ void displayToMonitor(PCB *process, double lapTime)
             break;
 
        //RUNNING
-        case RUNNING:
+        case RUNNING_STATE:
             //print runnning statment
                 //function: printf
             printf("%1.6f, OS: Process %d selected with %d ms remaining\n",
@@ -323,7 +323,7 @@ void displayToMonitor(PCB *process, double lapTime)
             break;
 
        //EXITING
-        case EXITING:
+        case EXIT_STATE:
             //print exiting statment
                //function: printf
             printf("%1.6f, OS: Process %d ended\n", lapTime, process->pid);
@@ -355,7 +355,7 @@ void displayToFile(PCB *process, double lapTime, FILE* file)
     switch (process->currentState) 
     {
        //READY
-        case READY:
+        case READY_STATE:
             //print ready statment tofile
                //function: fprintf
             fprintf(
@@ -364,7 +364,7 @@ void displayToFile(PCB *process, double lapTime, FILE* file)
                                                      lapTime, process->pid);
             break;
        //Running
-        case RUNNING:
+        case RUNNING_STATE:
             //print RUNNING statment tofile
                //function: fprintf
             fprintf(file,
@@ -376,7 +376,7 @@ void displayToFile(PCB *process, double lapTime, FILE* file)
             break;
 
        //Exiting
-        case EXITING:
+        case EXIT_STATE:
             //print EXITING statment to file
                //function: fprintf
             fprintf(file,
