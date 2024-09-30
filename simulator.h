@@ -14,6 +14,26 @@
 #include <pthread.h>
 #include <stdio.h>
 
+// Five state data structure for processes
+typedef enum {
+    NEW_STATE,
+    READY_STATE,
+    RUNNING_STATE,
+    BLOCKED_STATE,
+    EXIT_STATE
+} ProcessState;
+
+
+typedef struct PCB
+{
+    int pid;
+    int time;
+    ProcessState currentState;
+    OpCodeType *mdPtr;
+    struct PCB *nextNode;
+
+}PCB;
+
 /*
 Name: runSim
 process: primary simulation driver

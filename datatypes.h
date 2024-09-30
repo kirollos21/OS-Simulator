@@ -17,15 +17,6 @@ typedef enum {
     STR_ARG_LEN = 15
 } OpCodeArrayCapacity;
 
-// Five state data structure for processes
-typedef enum {
-    NEW_STATE,
-    READY_STATE,
-    RUNNING_STATE,
-    BLOCKED_STATE,
-    EXIT_STATE
-} ProcessState;
-
 typedef struct ConfigDataType
 {
     double version;
@@ -52,15 +43,5 @@ typedef struct OpCodeType
     double opEndTime; // size of time string returned from accessTimer
     struct OpCodeType *nextNode; // pointer to next node as needed
 } OpCodeType;
-
-typedef struct PCB
-{
-    int pid;
-    int time;
-    ProcessState currentState;
-    OpCodeType *mdPtr;
-    struct PCB *nextNode;
-
-}PCB;
 
 #endif
