@@ -29,8 +29,19 @@
 
 const char RADIX_POINT = '.';
 
-void runTimer( int milliSeconds )
+//WE ONLY CARE ABOUT THIS
+//IT RUNS FOR X MILLISECONDS
+//IT JUST SPINS
+//taking up time
+//DO NOT USE SLEEP
+//runTime needs to be  void*
+//pThread create will call this
+//pThread needs it to be a void*
+//pthreadCreate ->pThreadJoin
+//WE WILL MODIFY THIS CODE
+void *runTimer( void *arg )
    {
+    int *milliSeconds = (int *)arg;
     struct timeval startTime, endTime;
     int startSec, startUSec, endSec, endUSec;
     int uSecDiff, mSecDiff, secDiff, timeDiff;
@@ -42,7 +53,7 @@ void runTimer( int milliSeconds )
 
     timeDiff = 0;
 
-    while( timeDiff < milliSeconds )
+    while( timeDiff < *milliSeconds )
        {
         gettimeofday( &endTime, NULL );
 
@@ -61,11 +72,13 @@ void runTimer( int milliSeconds )
         secDiff = ( endSec - startSec ) * 1000;
         timeDiff = secDiff + mSecDiff;
        }
+       return NULL;
    }
+   
 
 double accessTimer( int controlCode, char *timeStr )
    {
-    static Boolean running = False;
+    static bool running = false;
     static int startSec = 0, endSec = 0, startUSec = 0, endUSec = 0;
     static int lapSec = 0, lapUSec = 0;
     struct timeval startData, lapData, endData;
@@ -75,7 +88,7 @@ double accessTimer( int controlCode, char *timeStr )
        {
         case ZERO_TIMER:
            gettimeofday( &startData, NULL );
-           running = True;
+           running = true;
 
            startSec = startData.tv_sec;
            startUSec = startData.tv_usec;
@@ -88,7 +101,7 @@ double accessTimer( int controlCode, char *timeStr )
            break;
            
         case LAP_TIMER:
-           if( running == True )
+           if( running == true )
               {
                gettimeofday( &lapData, NULL );
 
@@ -106,10 +119,10 @@ double accessTimer( int controlCode, char *timeStr )
            break;
 
         case STOP_TIMER:
-           if( running == True )
+           if( running == true )
               {
                gettimeofday( &endData, NULL );
-               running = False;
+               running = false;
 
                endSec = endData.tv_sec;
                endUSec = endData.tv_usec;
@@ -128,6 +141,10 @@ double accessTimer( int controlCode, char *timeStr )
 
     return fpTime;
    }
+   
+   //gives value as a double
+   //or you can get it back as a string
+   //exactly 6 digits to the left timeStr
 
 double processTime( double startSec, double endSec, 
                            double startUSec, double endUSec, char *timeStr )
