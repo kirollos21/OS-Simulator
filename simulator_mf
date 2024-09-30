@@ -9,14 +9,11 @@ CFLAGS = -Wall -std=c99 -pedantic -c $(DEBUG)
 LFLAGS = -Wall -std=c99 -pedantic $(DEBUG)
 VALGRIND = valgrind --leak-check=full --show-leak-kinds=all
 
-Simulator : OS_SimDriver.o simulator.o metadataops.o configops.o StringUtils.o
+Simulator : OS_SimDriver.o simulator.o metadataops.o configops.o StringUtils.o simtimer.o
 	$(CC) $(FLAGS) OS_SimDriver.o simulator.o metadataops.o configops.o StringUtils.o -o sim02
 
 OS_SimDriver.o : OS_SimDriver.c
 	$(CC) $(CFLAGS) OS_SimDriver.c
-
-simtimer.o : simtimer.c simtimer.h
-	$(CC) $(CFLAGS) simtimer.c
 
 simulator.o : simulator.c simulator.h
 	$(CC) $(CFLAGS) simulator.c
@@ -29,6 +26,9 @@ configops.o : configops.c configops.h
 
 StringUtils.o : StringUtils.c StringUtils.h
 	$(CC) $(CFLAGS) StringUtils.c
+
+simtimer.o : simtimer.c simtimer.h
+	$(CC) $(CFLAGS) simtimer.c
 
 clean:
 	\rm *.o sim02
