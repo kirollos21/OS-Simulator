@@ -18,9 +18,90 @@ Dependencies: tbd
 */
 void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
 {
-	// stub function
-	// void function, no return
-	printf("runSim called here\n");
+    //initialize variables
+    OpCodeType *localMetaPtr = metaDataMstrPtr;
+    PCB *newPCBList = createPCB_List(configPtr, localMetaPtr);
+    PCB *wkgPtrPCB = newPCBList;
+    char timeStr[10];
+    double elapsedTime = accessTimer(ZERO_TIMER, timeStr);
+    FILE* file = fopen(configPtr->logToFileName,"w");
+
+
+
+    printTitle(configPtr, file, elapsedTime);
+    //compute data 
+       //loop through the processes to display ready
+       while(wkgPtrPCB != NULL)
+       {
+          //set the process to ready
+          wkgPtrPCB->currentState = READY;
+
+          //lap the time
+             //function: accessTimer
+          elapsedTime = accessTimer(LAP_TIMER, timeStr);
+
+          //get next process
+          wkgPtrPCB = wkgPtrPCB->nextNode;
+       }
+       //set the node back to the top of the list
+       wkgPtrPCB = newPCBList;
+       //loop until we go through the all the processes
+       while(wkgPtrPCB!=NULL)
+       { 
+            //lap the time
+            elapsedTime = accessTimer(LAP_TIMER, timeStr);
+            //Grabs the process
+               //function: getNextProcess
+            wkgPtrPCB = getNextProcess(wkgPtrPCB,localMetaPtr);
+
+            //set to Running
+            wkgPtrPCB->currentState = RUNNING;
+
+            //Display remaining time and RUNNING state
+               //function: displayRunning
+            displayProcessState(configPtr, wkgPtrPCB, elapsedTime,file);
+
+            //loop through the operations 
+            while(compareString(wkgPtrPCB->mdPtr->strArg1,"end")!=STR_EQ)
+            {
+               //lap the time
+                    //function: accessTimer
+               elapsedTime = accessTimer(LAP_TIMER, timeStr);
+               
+            //display operation codes through different methods
+            displayOpCode(
+               configPtr, localMetaPtr, wkgPtrPCB, file,elapsedTime);
+
+               //if we are not at the end of the list pof processes  
+               if(wkgPtrPCB->nextNode != NULL)
+               {
+                  //move to next process
+                  wkgPtrPCB = wkgPtrPCB->nextNode;
+               }
+               //otherwise | we are at the END END
+               else
+               {
+                  //set the working pointer to null
+                  wkgPtrPCB = NULL;
+                  //lap the time
+                     //function: accessTimer
+                  elapsedTime = accessTimer(LAP_TIMER, timeStr);
+                  //print that the system has ended 
+                     //function pritnf
+                  printf("%1.6f, OS: System stop\n", elapsedTime);
+                  //stop the timer
+                     //function: accessTimer
+                  elapsedTime = accessTimer(STOP_TIMER, timeStr);
+               }
+
+            }
+       }
+       //lap the time
+       elapsedTime = accessTimer(LAP_TIMER, timeStr);
+       printf("%1.6f, OS: Simulator end\n", elapsedTime);
+       fclose(file);
+    //end function
+       //return nothing
 }
 
 /*
