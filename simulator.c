@@ -307,27 +307,30 @@ void displayToMonitor(PCB *process, double lapTime)
     {
        //READY
         case READY_STATE:
-            //print ready statement
+            //print ready statment
+               //function: printf
             printf("%1.6f, OS: Process %d set to READY state from NEW state\n", lapTime, process->pid);
             break;
 
        //RUNNING
         case RUNNING_STATE:
-            //print running statement
+            //print runnning statment
+                //function: printf
             printf("%1.6f, OS: Process %d selected with %d ms remaining\n", lapTime, process->pid, process->time);
             printf("%1.6f, OS: Process %d set from READY to RUNNING\n\n", lapTime, process->pid);
             break;
 
        //EXITING
         case EXIT_STATE:
-            //print exiting statement
+            //print exiting statment
+               //function: printf
             printf("%1.6f, OS: Process %d ended\n", lapTime, process->pid);
             printf("%1.6f, OS: Process %d set to EXIT\n", lapTime, process->pid);
             break;
-
        //ERROR
         default:
-            //print error statement
+            //print error statment
+               //function: printf
             printf("Error: Invalid process state\n");
             break;
     }
@@ -343,39 +346,41 @@ Device Input/File: None
 Device Output/Device: File
 Dependencies: None
 */
-void displayToFile(PCB *process, double lapTime, FILE *file) 
+void displayToFile(PCB *process, double lapTime, FILE* file) 
 {
    //depending on the currentState - file
     switch (process->currentState) 
     {
        //READY
         case READY_STATE:
-            //print ready statement to file
+            //print ready statment tofile
+            //function: fprintf
             fprintf(file, "%1.6f, OS: Process %d set to READY state from NEW state\n", lapTime, process->pid);
             fflush(file);
             break;
-
-       //RUNNING
+       //Running
         case RUNNING_STATE:
-            //print RUNNING statement to file
+            //print RUNNING statment tofile
+            //function: fprintf
             fprintf(file, "%1.6f, OS: Process %d selected with %d ms remaining\n", lapTime, process->pid, process->time);
             fflush(file);
             fprintf(file, "%1.6f, OS: Process %d set from READY to RUNNING\n\n", lapTime, process->pid);
             fflush(file);
             break;
 
-       //EXITING
+       //Exiting
         case EXIT_STATE:
-            //print EXITING statement to file
+            //print EXITING statment to file
+            //function: fprintf
             fprintf(file, "%1.6f, OS: Process %d ended\n", lapTime, process->pid);
             fflush(file);
             fprintf(file, "%1.6f, OS: Process %d set to EXIT\n", lapTime, process->pid);
             fflush(file);
             break;
-
        //ERROR
         default:
-            //print error statement to file
+            //print error statment to file
+            //function: fprintf
             fprintf(file, "Error: Invalid process state\n");
             fflush(file);
             break;
