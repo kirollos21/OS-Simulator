@@ -468,33 +468,23 @@ void getOpCode(OpCodeType *metaDataPtr, double timeStamp, int pid, ConfigDataTyp
         while (compareString(metaDataPtr->strArg1, "end") != STR_EQ)
         {
             // Check logToCode configuration
-            if (config->logToCode == LOGTO_MONITOR_CODE || 
-                                       config->logToCode == LOGTO_BOTH_CODE)
+            if (config->logToCode == LOGTO_MONITOR_CODE || config->logToCode == LOGTO_BOTH_CODE)
             {
                 // Display the ops to the monitor
-                printf("%1.6f, Process %d, %s %s operation start\n",
-                       timeStamp, pid, metaDataPtr->command,
-                                          metaDataPtr->strArg1);
+                printf("%1.6f, Process: %d, %s operation start\n", timeStamp, pid, metaDataPtr->strArg1);
 
                 // Display the end of the ops to the monitor
-                printf("%1.6f, Process %d, %s %s operation end\n",
-                       timeStamp, pid, metaDataPtr->command, 
-                                          metaDataPtr->strArg1);
+                printf("%1.6f, Process: %d, %s operation end\n", timeStamp, pid, metaDataPtr->strArg1);
             }
 
             // Check logToCode configuration
-            if (config->logToCode == LOGTO_FILE_CODE || 
-                                    config->logToCode == LOGTO_BOTH_CODE)
+            if (config->logToCode == LOGTO_FILE_CODE || config->logToCode == LOGTO_BOTH_CODE)
             {
                 // Display the ops to the file
-                fprintf(file, "%1.6f, Process %d, %s %s operation start\n",
-                     timeStamp, pid, metaDataPtr->command, 
-                                      metaDataPtr->strArg1);
+                fprintf(file, "%1.6f, Process: %d, %s operation start\n", timeStamp, pid, metaDataPtr->strArg1);
 
                 // Display the end of the ops to the file
-                fprintf(file, "%1.6f, Process %d, %s %s operation end\n",
-                        timeStamp, pid, metaDataPtr->command, 
-                                       metaDataPtr->strArg1);
+                fprintf(file, "%1.6f, Process: %d, %s operation end\n", timeStamp, pid, metaDataPtr->strArg1);
             }
 
             // Go to the next MetaData
