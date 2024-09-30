@@ -1,13 +1,25 @@
 //  File: datatypes.h
-//  Project: Sim01
-//  Name: Kirollos Zikry
-//  Date: 09/07/2024
+//  Project: Sim02
+//  Secret ID: 708996
+//  Date: 09/29/2024
 
 #ifndef datatypes_h
 #define datatypes_h
 #include <stdio.h>
 #include <stdbool.h>
 #include "StandardConstants.h"
+
+//typedef PCB struct
+
+typedef struct PCB
+{
+    int pid;
+    int time;
+    ProcessState currentState;
+    OpCodeType *mdPtr;
+    struct PCB *nextNode;
+
+}PCB;
 
 // GLOBAL CONSTANTS - may be used in other files
 

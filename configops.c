@@ -1,6 +1,6 @@
 //  File: configops.c
 //  Project: Sim01
-//  Name: Kirollos Zikry
+//  Secret ID: 708996
 //  Date: 09/07/2024 & 09/08/2024
 
 #include "configops.h"

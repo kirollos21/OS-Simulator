@@ -1,7 +1,7 @@
 #  File: simulator_mf
-#  Project: Sim01
-#  Name: Kirollos Zikry
-#  Date: 09/09/2024
+#  Project: Sim02
+#  Secret ID: 708996
+#  Date: 09/29/2024
 
 CC = gcc
 DEBUG = -g
@@ -27,8 +27,11 @@ configops.o : configops.c configops.h
 StringUtils.o : StringUtils.c StringUtils.h
 	$(CC) $(CFLAGS) StringUtils.c
 
+simtimer.o : simtimer.c simtimer.h
+	$(CC) $(CFLAGS) simtimer.c
+
 clean:
-	\rm *.o sim01
+	\rm *.o sim02
 
 memcheck: Simulator
-	$(VALGRIND) ./sim01
+	$(VALGRIND) ./sim02
