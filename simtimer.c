@@ -30,9 +30,8 @@
 const char RADIX_POINT = '.';
 
 // Modify the runTimer function to handle different cycle times
-void *runTimer(void *arg)
+void *runTimer(int milliSeconds)
 {
-    int *milliSeconds = (int *)arg;
     struct timeval startTime, endTime;
     int startSec, startUSec, endSec, endUSec;
     int uSecDiff, mSecDiff, secDiff, timeDiff;
