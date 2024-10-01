@@ -1,16 +1,16 @@
 Start Program Meta-Data Code:
 sys start
 app start, 0
-dev in, serial, 2800
-dev out, video signal, 4200
-dev in, sound signal, 4000
-dev out, hard drive, 1500
-dev in, keyboard, 8000
-dev in, serial, 2800
-cpu process, 1000
-cpu process, 800
-cpu process, 600
-dev out, video signal, 4900
+dev in, serial, 28
+dev out, video signal, 42
+dev in, sound signal, 40
+dev out, hard drive, 15
+dev in, keyboard, 80
+dev in, serial, 28
+cpu process, 10
+cpu process, 8
+cpu process, 6
+dev out, video signal, 49
 app end
 app start, 0
 dev in, serial, 20
