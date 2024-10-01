@@ -262,7 +262,6 @@ Dependencies: getOpCode, displayState functions
 void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process, FILE *file, double *elapsedTime)
 {
     double operationTime = 0.0;  // Time for each operation
-    double startElapsed = *elapsedTime;  // Hold start time for precise increments
 
     // Loop through each operation in the metadata for the current process
     while (compareString(metaData->strArg1, "end") != STR_EQ)
@@ -272,39 +271,36 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
         {
             // CPU process operation: adjust timing according to CPU cycle rate
             operationTime = (metaData->intArg2 * configPtr->procCycleRate) / 1000.0;
-        }
-        else if (compareString(metaData->command, "dev") == STR_EQ)
-        {
-            // Device I/O operation: adjust timing according to IO cycle rate
-            operationTime = (metaData->intArg2 * configPtr->ioCycleRate) / 1000.0;
-        }
 
-        // Log start of operation
-        if (compareString(metaData->command, "cpu") == STR_EQ)
-        {
-            // CPU operation
+            // Log CPU process operation start
             printf("  %1.6f, Process: %d, cpu process operation start\n", *elapsedTime, process->pid);
             if (file != NULL)
             {
                 fprintf(file, "  %1.6f, Process: %d, cpu process operation start\n", *elapsedTime, process->pid);
             }
         }
-        else if (compareString(metaData->command, "dev") == STR_EQ && compareString(metaData->strArg1, "in") == STR_EQ)
+        else if (compareString(metaData->inOutArg, "in") == STR_EQ)
         {
-            // Input device operation
-            printf("  %1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg2);
+            // Input device operation: adjust timing according to IO cycle rate
+            operationTime = (metaData->intArg2 * configPtr->ioCycleRate) / 1000.0;
+
+            // Log input device operation start
+            printf("  %1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg1);
             if (file != NULL)
             {
-                fprintf(file, "  %1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg2);
+                fprintf(file, "  %1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg1);
             }
         }
-        else if (compareString(metaData->command, "dev") == STR_EQ && compareString(metaData->strArg1, "out") == STR_EQ)
+        else if (compareString(metaData->inOutArg, "out") == STR_EQ)
         {
-            // Output device operation
-            printf("  %1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg2);
+            // Output device operation: adjust timing according to IO cycle rate
+            operationTime = (metaData->intArg2 * configPtr->ioCycleRate) / 1000.0;
+
+            // Log output device operation start
+            printf("  %1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg1);
             if (file != NULL)
             {
-                fprintf(file, "  %1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg2);
+                fprintf(file, "  %1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg1);
             }
         }
 
@@ -320,20 +316,20 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
                 fprintf(file, "  %1.6f, Process: %d, cpu process operation end\n", *elapsedTime, process->pid);
             }
         }
-        else if (compareString(metaData->command, "dev") == STR_EQ && compareString(metaData->strArg1, "in") == STR_EQ)
+        else if (compareString(metaData->inOutArg, "in") == STR_EQ)
         {
-            printf("  %1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg2);
+            printf("  %1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg1);
             if (file != NULL)
             {
-                fprintf(file, "  %1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg2);
+                fprintf(file, "  %1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg1);
             }
         }
-        else if (compareString(metaData->command, "dev") == STR_EQ && compareString(metaData->strArg1, "out") == STR_EQ)
+        else if (compareString(metaData->inOutArg, "out") == STR_EQ)
         {
-            printf("  %1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg2);
+            printf("  %1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg1);
             if (file != NULL)
             {
-                fprintf(file, "  %1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg2);
+                fprintf(file, "  %1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg1);
             }
         }
 
