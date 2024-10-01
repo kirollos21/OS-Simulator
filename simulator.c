@@ -82,9 +82,10 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         // Handle process operations, skipping the "start app" operation
         while (wkgPtrPCB->mdPtr != NULL)
         {
-            // Check if the operation is not "start app" and proceed with logging
+            // Skip the "start app" operation by checking the command and argument
             if (!(strcmp(wkgPtrPCB->mdPtr->command, "app") == 0 && strcmp(wkgPtrPCB->mdPtr->strArg1, "start") == 0))
             {
+                // Handle other operations normally
                 displayOpCode(configPtr, wkgPtrPCB->mdPtr, wkgPtrPCB, file, &elapsedTime);
             }
 
@@ -114,6 +115,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Stop the timer
     accessTimer(STOP_TIMER, timeStr);
 }
+
 
 
 /*
