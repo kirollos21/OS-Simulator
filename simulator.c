@@ -257,6 +257,14 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
     // Loop through each operation in the metadata for the current process
     while (compareString(metaData->strArg1, "end") != STR_EQ)
     {
+        // Check if the command is "app start" or "app end", which should not generate logs
+        if (compareString(metaData->command, "app") == STR_EQ)
+        {
+            // Move to the next operation without logging "app start" or "app end"
+            metaData = metaData->nextNode;
+            continue;
+        }
+
         // Determine the type of operation (CPU or I/O)
         if (compareString(metaData->command, "cpu") == STR_EQ)
         {
@@ -272,7 +280,7 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
         // Add the operation time to the total elapsed time
         *elapsedTime += operationTime;
 
-        // Print the operation start and end times
+        // Log the operation start and end, but only for CPU and device operations
         if (configPtr->logToCode == LOGTO_MONITOR_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
         {
             printf("%1.6f, Process: %d, %s %s operation start\n", *elapsedTime, process->pid, metaData->strArg1, metaData->command);
@@ -303,6 +311,7 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
         fprintf(fileName, "%1.6f, OS: Process %d set to EXIT\n", *elapsedTime, process->pid);
     }
 }
+
 
 /*
 Name: displayProcessState
