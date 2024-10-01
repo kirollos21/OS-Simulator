@@ -43,7 +43,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Print the title
     printTitle(configPtr, file, elapsedTime);
 
-    // Loop through the PCB list to set all processes to READY state
+    // Loop through the PCB list
     while (wkgPtrPCB != NULL)
     {
         // Set the process to ready
@@ -62,8 +62,8 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Loop through all the processes for execution
     while (wkgPtrPCB != NULL)
     {
-        // Lap the timer to get the current elapsed time
-        elapsedTime = accessTimer(LAP_TIMER, timeStr);
+        // Get the next process
+        wkgPtrPCB = getNextProcess(wkgPtrPCB, localMetaPtr);
 
         // Set process state to RUNNING
         wkgPtrPCB->currentState = RUNNING_STATE;
@@ -81,11 +81,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         // Handle process operations (displayOpCode also updates the elapsed time)
         displayOpCode(configPtr, wkgPtrPCB->mdPtr, wkgPtrPCB, file, &elapsedTime);
 
-        // Update elapsedTime after all operations for the process are handled
-        elapsedTime = accessTimer(LAP_TIMER, timeStr);
-
         // Print the process exit status
-        wkgPtrPCB->currentState = EXIT_STATE;
         displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
 
         // Move to the next process
