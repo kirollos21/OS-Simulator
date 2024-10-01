@@ -108,7 +108,6 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     {
         fprintf(file, "%1.6f, OS: System stop\n", elapsedTime);
         fflush(file);
-        fclose(file);
     }
 
     elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Accumulate time again
