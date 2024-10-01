@@ -18,81 +18,91 @@ Dependencies: tbd
 */
 void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
 {
-    // Initialize variables
+    //initialize variables
     OpCodeType *localMetaPtr = metaDataMstrPtr;
-    PCB *newPCBList = createPCB_List(configPtr, localMetaPtr); // Create PCB linked list
-    PCB *wkgPtrPCB = newPCBList; // Working pointer to PCB
-    char timeStr[10];  // For storing the formatted time string
-    double elapsedTime = accessTimer(ZERO_TIMER, timeStr); // Start timer at 0.0
-    FILE* file = fopen(configPtr->logToFileName, "w"); // Open log file
+    PCB *newPCBList = createPCB_List(configPtr, localMetaPtr);
+    PCB *wkgPtrPCB = newPCBList;
+    char timeStr[10];
+    double elapsedTime = accessTimer(ZERO_TIMER, timeStr);
+    FILE* file = fopen(configPtr->logToFileName,"w");
 
-    // Print the title and start time
+
+
     printTitle(configPtr, file, elapsedTime);
+    //compute data 
+       //loop through the processes to display ready
+       while(wkgPtrPCB != NULL)
+       {
+          //set the process to ready
+          wkgPtrPCB->currentState = READY_STATE;
 
-    // Set all processes to READY state and log the state
-    while (wkgPtrPCB != NULL)
-    {
-        wkgPtrPCB->currentState = READY_STATE;
-        elapsedTime = accessTimer(LAP_TIMER, timeStr);  // Lap the timer to track READY state
-        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file); // Display process state
-        wkgPtrPCB = wkgPtrPCB->nextNode;
-    }
+          //lap the time
+             //function: accessTimer
+          elapsedTime = accessTimer(LAP_TIMER, timeStr);
 
-    // Reset the pointer back to the start of the process list
-    wkgPtrPCB = newPCBList;
+          //get next process
+          wkgPtrPCB = wkgPtrPCB->nextNode;
+       }
+       //set the node back to the top of the list
+       wkgPtrPCB = newPCBList;
+       //loop until we go through the all the processes
+       while(wkgPtrPCB!=NULL)
+       { 
+            //lap the time
+            elapsedTime = accessTimer(LAP_TIMER, timeStr);
+            //Grabs the process
+               //function: getNextProcess
+            wkgPtrPCB = getNextProcess(wkgPtrPCB,localMetaPtr);
 
-    // Loop through the processes, executing their operations
-    while (wkgPtrPCB != NULL)
-    {
-        // Select the process and set it to RUNNING
-        elapsedTime = accessTimer(LAP_TIMER, timeStr);
-        wkgPtrPCB->currentState = RUNNING_STATE;
-        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file); // Display process state
+            //set to Running
+            wkgPtrPCB->currentState = RUNNING_STATE;
 
-        // Loop through all operations of the current process
-        while (compareString(wkgPtrPCB->mdPtr->strArg1, "end") != STR_EQ)
-        {
-            // Check if it's a CPU process or a Device I/O operation
-            if (compareString(wkgPtrPCB->mdPtr->command, "cpu") == STR_EQ)
+            //Display remaining time and RUNNING state
+               //function: displayRunning
+            displayProcessState(configPtr, wkgPtrPCB, elapsedTime,file);
+
+            //loop through the operations 
+            while(compareString(wkgPtrPCB->mdPtr->strArg1,"end")!=STR_EQ)
             {
-                // Handle CPU process operation
-                double cpuTime = wkgPtrPCB->mdPtr->intArg2 * configPtr->procCycleRate;  // Calculate time in ms
-                elapsedTime += cpuTime / 1000;  // Convert ms to seconds and add to elapsedTime
-                printf("%1.6f, Process: %d, cpu process operation start\n", elapsedTime, wkgPtrPCB->pid);
-                printf("%1.6f, Process: %d, cpu process operation end\n", elapsedTime, wkgPtrPCB->pid);
-                fprintf(file, "%1.6f, Process: %d, cpu process operation start\n", elapsedTime, wkgPtrPCB->pid);
-                fprintf(file, "%1.6f, Process: %d, cpu process operation end\n", elapsedTime, wkgPtrPCB->pid);
+               //lap the time
+                    //function: accessTimer
+               elapsedTime = accessTimer(LAP_TIMER, timeStr);
+               
+            //display operation codes through different methods
+            displayOpCode(
+               configPtr, localMetaPtr, wkgPtrPCB, file,elapsedTime);
+
+               //if we are not at the end of the list pof processes  
+               if(wkgPtrPCB->nextNode != NULL)
+               {
+                  //move to next process
+                  wkgPtrPCB = wkgPtrPCB->nextNode;
+               }
+               //otherwise | we are at the END END
+               else
+               {
+                  //set the working pointer to null
+                  wkgPtrPCB = NULL;
+                  //lap the time
+                     //function: accessTimer
+                  elapsedTime = accessTimer(LAP_TIMER, timeStr);
+                  //print that the system has ended 
+                     //function pritnf
+                  printf("%1.6f, OS: System stop\n", elapsedTime);
+                  //stop the timer
+                     //function: accessTimer
+                  elapsedTime = accessTimer(STOP_TIMER, timeStr);
+               }
+
             }
-            else if (compareString(wkgPtrPCB->mdPtr->command, "dev") == STR_EQ)
-            {
-                // Handle Device I/O operation
-                double ioTime = wkgPtrPCB->mdPtr->intArg2 * configPtr->ioCycleRate;  // Calculate time in ms
-                elapsedTime += ioTime / 1000;  // Convert ms to seconds and add to elapsedTime
-                printf("%1.6f, Process: %d, %s %s operation start\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->mdPtr->strArg1, wkgPtrPCB->mdPtr->command);
-                printf("%1.6f, Process: %d, %s %s operation end\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->mdPtr->strArg1, wkgPtrPCB->mdPtr->command);
-                fprintf(file, "%1.6f, Process: %d, %s %s operation start\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->mdPtr->strArg1, wkgPtrPCB->mdPtr->command);
-                fprintf(file, "%1.6f, Process: %d, %s %s operation end\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->mdPtr->strArg1, wkgPtrPCB->mdPtr->command);
-            }
-
-            // Move to the next operation in the metadata
-            wkgPtrPCB->mdPtr = wkgPtrPCB->mdPtr->nextNode;
-        }
-
-        // End of process, set the process state to EXIT and log the state
-        elapsedTime = accessTimer(LAP_TIMER, timeStr);
-        wkgPtrPCB->currentState = EXIT_STATE;
-        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
-
-        // Move to the next process in the list
-        wkgPtrPCB = wkgPtrPCB->nextNode;
-    }
-
-    // End of the simulation
-    elapsedTime = accessTimer(LAP_TIMER, timeStr);
-    printf("%1.6f, OS: System stop\n", elapsedTime);
-    fprintf(file, "%1.6f, OS: System stop\n", elapsedTime);
-    fflush(file);  // Ensure all data is written to the file
-    fclose(file);  // Close the log file
+       }
+       //lap the time
+       elapsedTime = accessTimer(LAP_TIMER, timeStr);
+       printf("%1.6f, OS: Simulator end\n", elapsedTime);
+       fflush(file);
+       fclose(file);
+    //end function
+       //return nothing
 }
 
 /*
