@@ -1,15 +1,14 @@
-// Preprocessor directive 
+//  File: StringUtils.h
+//  Project: Sim01
+//  Secret ID: 708996
+//  Date: 09/06/2024 & 09/07/2024 & 09/08/2024
+
 #ifndef STRING_UTILS_H
 #define STRING_UTILS_H
-
-// header files
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "StandardConstants.h"
-
-
-// prototypes
 
 /*
 Name: compareString
@@ -24,7 +23,7 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: getStringLength
 */
-int compareString( const char *oneStr, const char *otherStr );
+int compareString(const char *oneStr, const char *otherStr);
 
 /*
 Name: concatenateString
@@ -36,7 +35,7 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: getStringLength
 */
-void concatenateString( char *destStr, const char *sourceStr );
+void concatenateString(char *destStr, const char *sourceStr);
 
 /*
 Name: copyString
@@ -49,20 +48,21 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: getStringLength
 */
-void copyString( char *destStr, const char *sourceStr );
+void copyString(char *destStr, const char *sourceStr);
 
 /*
-Name: getStringLength
-Process: finds the length of a string by
-         counting characters up to the NULL_CHAR character
-Function Input/Parameters: c-style string (char *)
+Name: findSubString
+Process: linear search for given substring within another string
+Function Input/Parameters: c-style source test string (char *)
+                           c-style source search string (char *)
 Function Output/Parameters: none
-Function Output/Returned: length of string (int)
+Function Output/Returned: index of found substring, or
+                          SUBSTRING_NOT_FOUND constant if string not found
 Device Input/Keyboard: none
 Device Output/Monitor: none
-Dependencies: none
+Dependencies: getStringLength
 */
-int getStringLength( const char *testStr );
+int findSubString(const char *testStr, const char *searchSubStr);
 
 /*
 Name: getStringConstrained
@@ -80,23 +80,20 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: fgetc
 */
-bool getStringConstrained( FILE *inStream, bool clearLeadingNonPrintable,
-                            bool clearLeadingSpace, bool stopAtNonPrintable,
-                                       char delimiter, char *capturedString );
+bool getStringConstrained(FILE *inStream, bool clearLeadingNonPrintable, bool clearLeadingSpace, bool stopAtNonPrintable, char delimiter, char *capturedString);
 
 /*
-Name: findSubString
-Process: linear search for given substring within another string
-Function Input/Parameters: c-style source test string (char *)
-                           c-style source search string (char *)
+Name: getStringLength
+Process: finds the length of a string by
+         counting characters up to the NULL_CHAR character
+Function Input/Parameters: c-style string (char *)
 Function Output/Parameters: none
-Function Output/Returned: index of found substring, or
-                          SUBSTRING_NOT_FOUND constant if string not found
+Function Output/Returned: length of string (int)
 Device Input/Keyboard: none
 Device Output/Monitor: none
-Dependencies: getStringLength
+Dependencies: none
 */
-int findSubString( const char *testStr, const char *searchSubStr );
+int getStringLength(const char *testStr);
 
 /*
 Name: getStringToDelimiter
@@ -111,8 +108,7 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: getStringConstrained
 */
-bool getStringToDelimeter( FILE *instream, char delimiter, 
-                                                  char *capturedString );
+bool getStringToDelimeter(FILE *instream, char delimiter, char *capturedString);
 
 /*
 Name: getStringToLineEnd
@@ -125,7 +121,7 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: getStringConstrained
 */
-bool getStringToLineEnd( FILE *inStream, char *capturedString );
+bool getStringToLineEnd(FILE *inStream, char *capturedString);
 
 /*
 Name: getSubString
@@ -140,8 +136,7 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: getStringLength, malloc, copyString, free
 */
-void getSubString( char *destStr, const char * sourceStr,
-                                         int startIndex, int endIndex );
+void getSubString(char *destStr, const char * sourceStr, int startIndex, int endIndex);
 
 /*
 Name: setStrToLowerCase
@@ -154,7 +149,7 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: toLowerCase
 */
-void setStrToLowerCase( char *destStr, const char *sourceStr );
+void setStrToLowerCase(char *destStr, const char *sourceStr);
 
 /*
 Name: toLowerCase
@@ -167,7 +162,6 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: none
 */
-char toLowerCase( char testChar );
+char toLowerCase(char testChar);
 
-
-#endif   // STRING_UTILS_H
+#endif

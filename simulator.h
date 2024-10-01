@@ -1,35 +1,52 @@
-// protect from multiple compiling
-#ifndef SIMULATOR_H
-#define SIMULATOR_H
+//  File: simulator.h
+//  Project: Sim02
+//  Secret ID: 708996
+//  Date: 09/30/2024
 
-// header files
+#ifndef simulator_h
+#define simulator_h
+#include "datatypes.h"
+#include "StandardConstants.h"
 #include "metadataops.h"
 #include "configops.h"
 #include "simtimer.h"
 #include "time.h"
 #include <pthread.h>
+#include <stdio.h>
+
+// Five state data structure for processes
+typedef enum {
+    NEW_STATE,
+    READY_STATE,
+    RUNNING_STATE,
+    BLOCKED_STATE,
+    EXIT_STATE
+} ProcessState;
 
 
-typedef enum
-{
-    NEW,
-    READY,
-    RUNNING,
-    EXITING
-}STATE;
-
-//data structure
 typedef struct PCB
 {
     int pid;
     int time;
-    STATE currentState;
+    ProcessState currentState;
     OpCodeType *mdPtr;
     struct PCB *nextNode;
 
 }PCB;
 
-// function prototypes
+/*
+Name: runSim
+process: primary simulation driver
+Function Input/Parameters:  configuration data (ConfigDataType *),
+                            metadata (OpCodeType *)
+Function Output/Parameters: none
+Function Output/Returned: none
+Device Input/device: none
+Device Output/device: none
+Dependencies: tbd
+*/
+void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr);
+
 /*
 Name: createNewNode
 Process: Allocates memory for a new PCB node and initializes
@@ -58,8 +75,6 @@ Dependencies: createNewNode function
 */
 PCB *createPCB_List(ConfigDataType *configPtr, OpCodeType *metaData);
 
-
-
 /*
 Name: displayOpCode
 Process: Displays the operation codes based on the configuration 
@@ -72,8 +87,7 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: getOpCode, displayState functions
 */
-void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, 
-                            PCB *process, FILE *fileName, double time);
+void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process, FILE *fileName, double time);
 
 /*
 Name: displayProcessState
@@ -86,6 +100,7 @@ Device Output/Device: None
 Dependencies: None
 */
 void displayProcessState(ConfigDataType *config, PCB *process, double lapTime, FILE* file);
+
 /*
 Name: displayToMonitor
 Process: Displays the current state of the process to the monitor
@@ -109,6 +124,7 @@ Device Output/Device: File
 Dependencies: None
 */
 void displayToFile(PCB *process, double lapTime, FILE* file);
+
 /*
 Name: getNextProcess
 Process: Retrieves the next process in the linked list of processes
@@ -134,9 +150,7 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: None
 */
-
-void getOpCode(OpCodeType *metaDataPtr, double timeStamp, int pid, 
-                            ConfigDataType *config, FILE *file);
+void getOpCode(OpCodeType *metaDataPtr, double timeStamp, int pid, ConfigDataType *config, FILE *file);
 
 /*
 Name: printTitle
@@ -151,21 +165,4 @@ Dependencies: None
 */
 void printTitle(ConfigDataType *config, FILE *fileName, double time);
 
-/*
-Name: runSim
-Process: Runs the simulation based on the provided configuration and metadata
-Function Input/Parameters: Configuration pointer, Metadata pointer
-Function Output/Parameters: None
-Function Output/Returned: None
-Device Input/File: None
-Device Output/Device: None
-Dependencies: createPCB_List, displayState, getNextProcess, displayOpCode, 
-printTitle functions
-*/
-
-void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr);
-
-
-
-
-#endif  // SIMULATOR_H
+#endif
