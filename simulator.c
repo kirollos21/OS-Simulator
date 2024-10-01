@@ -64,7 +64,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         wkgPtrPCB->currentState = RUNNING_STATE;
 
         // Update elapsed time before logging
-        elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Accumulate global time
+        elapsedTime = accessTimer(LAP_TIMER, timeStr);  // Accumulate global time
 
         // Print process selection and transition to running state
         printf("%1.6f, OS: Process %d selected with %d ms remaining\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->time);
@@ -88,7 +88,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     }
 
     // Print the system stop message
-    elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Final time accumulation
+    elapsedTime = accessTimer(LAP_TIMER, timeStr);  // Final time accumulation
     printf("%1.6f, OS: System stop\n", elapsedTime);
 
     if (file != NULL)
@@ -101,6 +101,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Stop the timer
     accessTimer(STOP_TIMER, timeStr);
 }
+
 
 /*
 Name: createNewNode
