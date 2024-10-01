@@ -87,7 +87,7 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: getOpCode, displayState functions
 */
-void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process, FILE *fileName, double time);
+void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process, FILE *fileName, double *elapsedTime);
 
 /*
 Name: displayProcessState
@@ -150,7 +150,7 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: None
 */
-void getOpCode(OpCodeType *metaDataPtr, double timeStamp, int pid, ConfigDataType *config, FILE *file);
+// void getOpCode(OpCodeType *metaDataPtr, double timeStamp, int pid, ConfigDataType *config, FILE *file);
 
 /*
 Name: printTitle
