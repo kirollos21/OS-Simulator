@@ -342,16 +342,15 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
     // After processing all operations, set the process state to EXIT
     process->currentState = EXIT_STATE;
 
-    // Display the process exit status
-    
-    printf("\n");
-    printf("%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
-    if (file != NULL)
-    {
-        fprintf(file, "\n");
-        fprintf(file, "%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
-    }
+    // Here, remove the redundant print statements for "Process ended"
+    // This is now handled in displayProcessState
+    // printf("%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
+    // if (file != NULL)
+    // {
+    //     fprintf(file, "%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
+    // }
 }
+
 
 /*
 Name: displayProcessState
@@ -363,7 +362,7 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: None
 */
-void displayProcessState(ConfigDataType *config, PCB *process, double lapTime, FILE* file) 
+void displayProcessState(ConfigDataType config, PCB *process, double lapTime, FILE file) 
 {
     // Check logToCode value for monitor
     if (config->logToCode == LOGTO_MONITOR_CODE || config->logToCode == LOGTO_BOTH_CODE) 
