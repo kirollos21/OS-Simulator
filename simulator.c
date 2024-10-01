@@ -44,11 +44,21 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Print the title
     printTitle(configPtr, file, elapsedTime);
 
+    // Immediately update elapsed time after timer starts for accurate state transitions
+    elapsedTime += accessTimer(LAP_TIMER, timeStr);
+
     // Loop through the PCB list and set to READY state
     while (wkgPtrPCB != NULL)
     {
         wkgPtrPCB->currentState = READY_STATE;
-        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);  // Log READY state
+
+        // Log the state transition for each process
+        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
+
+        // Update elapsed time after each transition to ensure a new value
+        elapsedTime += accessTimer(LAP_TIMER, timeStr);
+        
+        // Move to the next process in the list
         wkgPtrPCB = wkgPtrPCB->nextNode;
     }
 
@@ -102,7 +112,6 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Stop the timer
     accessTimer(STOP_TIMER, timeStr);
 }
-
 
 /*
 Name: createNewNode
