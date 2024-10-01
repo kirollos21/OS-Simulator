@@ -339,17 +339,9 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
         metaData = metaData->nextNode;
     }
 
-    // After processing all operations, set the process state to EXIT
-    process->currentState = EXIT_STATE;
-
-    // Here, remove the redundant print statements for "Process ended"
-    // This is now handled in displayProcessState
-    // printf("%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
-    // if (file != NULL)
-    // {
-    //     fprintf(file, "%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
-    // }
+    // Process exit logging handled by displayProcessState
 }
+
 
 
 /*
