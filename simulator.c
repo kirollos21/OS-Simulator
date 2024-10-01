@@ -43,16 +43,11 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Print the title
     printTitle(configPtr, file, elapsedTime);
 
-    // Loop through the PCB list
+    // Loop through the PCB list and set to READY state
     while (wkgPtrPCB != NULL)
     {
-        // Set the process to ready
         wkgPtrPCB->currentState = READY_STATE;
-
-        // Print the process ready state
         displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
-
-        // Move to the next process
         wkgPtrPCB = wkgPtrPCB->nextNode;
     }
 
@@ -69,6 +64,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         wkgPtrPCB->currentState = RUNNING_STATE;
 
         // Print process selection and transition to running state
+        elapsedTime = accessTimer(LAP_TIMER, timeStr);  // Update time
         printf("%1.6f, OS: Process %d selected with %d ms remaining\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->time);
         printf("%1.6f, OS: Process %d set from READY to RUNNING\n", elapsedTime, wkgPtrPCB->pid);
 
@@ -82,6 +78,8 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         displayOpCode(configPtr, wkgPtrPCB->mdPtr, wkgPtrPCB, file, &elapsedTime);
 
         // Print the process exit status
+        elapsedTime = accessTimer(LAP_TIMER, timeStr);  // Update time again
+        wkgPtrPCB->currentState = EXIT_STATE;
         displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
 
         // Move to the next process
@@ -89,7 +87,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     }
 
     // Print the system stop message
-    elapsedTime = accessTimer(LAP_TIMER, timeStr); // Final lap time for the system stop
+    elapsedTime = accessTimer(LAP_TIMER, timeStr);  // Final lap time for the system stop
     printf("%1.6f, OS: System stop\n", elapsedTime);
 
     if (file != NULL)
