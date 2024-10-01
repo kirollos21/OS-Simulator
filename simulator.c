@@ -341,16 +341,6 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
 
     // After processing all operations, set the process state to EXIT
     process->currentState = EXIT_STATE;
-
-    // Display the process exit status
-    
-    printf("\n");
-    printf("%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
-    if (file != NULL)
-    {
-        fprintf(file, "\n");
-        fprintf(file, "%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
-    }
 }
 
 /*
