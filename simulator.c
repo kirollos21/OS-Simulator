@@ -339,10 +339,19 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
         metaData = metaData->nextNode;
     }
 
-    // Process exit logging handled by displayProcessState
+    // After processing all operations, set the process state to EXIT
+    process->currentState = EXIT_STATE;
+
+    // Display the process exit status
+    
+    printf("\n");
+    printf("%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
+    if (file != NULL)
+    {
+        fprintf(file, "\n");
+        fprintf(file, "%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
+    }
 }
-
-
 
 /*
 Name: displayProcessState
@@ -429,7 +438,7 @@ Device Input/File: None
 Device Output/Device: File
 Dependencies: None
 */
-void displayToFile(PCB *process, double lapTime, FILE* file) 
+void displayToFile(PCB process, double lapTime, FILE file) 
 {
    //depending on the currentState - file
     switch (process->currentState) 
@@ -595,7 +604,7 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: None
 */
-void printTitle(ConfigDataType *config, FILE* fileName, double time)
+void printTitle(ConfigDataType config, FILE fileName, double time)
 {
    if (config->logToCode==LOGTO_MONITOR_CODE)
    {   

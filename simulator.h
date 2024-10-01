@@ -99,7 +99,7 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: None
 */
-void displayProcessState(ConfigDataType config, PCB *process, double lapTime, FILE file);
+void displayProcessState(ConfigDataType *config, PCB *process, double lapTime, FILE* file);
 
 /*
 Name: displayToMonitor
