@@ -504,7 +504,6 @@ Function Output/Returned: None
 Device Input/File: None
 Device Output/Device: None
 Dependencies: None
-*/
 void getOpCode(OpCodeType *metaDataPtr, double timeStamp, int pid, ConfigDataType *config, FILE *file)
 {
     // Initialize variables
@@ -554,6 +553,7 @@ void getOpCode(OpCodeType *metaDataPtr, double timeStamp, int pid, ConfigDataTyp
     printf("\n");
     fprintf(file, "\n");
 }
+*/
 
 /*
 Name: printTitle
