@@ -65,7 +65,7 @@ void runTimer( int milliSeconds )
 
 double accessTimer( int controlCode, char *timeStr )
    {
-    static Boolean running = False;
+    static bool running = false;
     static int startSec = 0, endSec = 0, startUSec = 0, endUSec = 0;
     static int lapSec = 0, lapUSec = 0;
     struct timeval startData, lapData, endData;
@@ -75,7 +75,7 @@ double accessTimer( int controlCode, char *timeStr )
        {
         case ZERO_TIMER:
            gettimeofday( &startData, NULL );
-           running = True;
+           running = true;
 
            startSec = startData.tv_sec;
            startUSec = startData.tv_usec;
@@ -88,7 +88,7 @@ double accessTimer( int controlCode, char *timeStr )
            break;
            
         case LAP_TIMER:
-           if( running == True )
+           if( running == true )
               {
                gettimeofday( &lapData, NULL );
 
@@ -106,10 +106,10 @@ double accessTimer( int controlCode, char *timeStr )
            break;
 
         case STOP_TIMER:
-           if( running == True )
+           if( running == true )
               {
                gettimeofday( &endData, NULL );
-               running = False;
+               running = false;
 
                endSec = endData.tv_sec;
                endUSec = endData.tv_usec;
