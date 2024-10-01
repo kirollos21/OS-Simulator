@@ -23,7 +23,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     PCB *newPCBList = createPCB_List(configPtr, localMetaPtr);
     PCB *wkgPtrPCB = newPCBList;
     char timeStr[10];
-    double elapsedTime = 0.0;
+    double elapsedTime = 0.0;   // Global elapsed time tracker
     FILE *file = NULL;
 
     // Open the log file if logging to a file is required
@@ -47,8 +47,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     while (wkgPtrPCB != NULL)
     {
         wkgPtrPCB->currentState = READY_STATE;
-        elapsedTime = accessTimer(LAP_TIMER, timeStr);
-        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
+        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);  // Log READY state
         wkgPtrPCB = wkgPtrPCB->nextNode;
     }
 
@@ -64,8 +63,10 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         // Set process state to RUNNING
         wkgPtrPCB->currentState = RUNNING_STATE;
 
+        // Update elapsed time before logging
+        elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Accumulate global time
+
         // Print process selection and transition to running state
-        elapsedTime = accessTimer(LAP_TIMER, timeStr);  // Update time
         printf("%1.6f, OS: Process %d selected with %d ms remaining\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->time);
         printf("%1.6f, OS: Process %d set from READY to RUNNING\n", elapsedTime, wkgPtrPCB->pid);
 
@@ -80,15 +81,14 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
 
         // Print the process exit status
         wkgPtrPCB->currentState = EXIT_STATE;
-        elapsedTime = accessTimer(LAP_TIMER, timeStr);  // Update time again
-        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
+        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);  // Log EXIT state
 
         // Move to the next process
         wkgPtrPCB = wkgPtrPCB->nextNode;
     }
 
     // Print the system stop message
-    elapsedTime = accessTimer(LAP_TIMER, timeStr);  // Final lap time for the system stop
+    elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Final time accumulation
     printf("%1.6f, OS: System stop\n", elapsedTime);
 
     if (file != NULL)
@@ -101,8 +101,6 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Stop the timer
     accessTimer(STOP_TIMER, timeStr);
 }
-
-
 
 /*
 Name: createNewNode
