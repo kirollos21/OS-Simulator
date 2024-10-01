@@ -24,7 +24,7 @@
 #include <sys/time.h>
 #include <string.h>
 #include <math.h>
-#include "mainprog.h"
+#include "OS_SimDriver.h"
 
 // Global Constants  //////////////////////////////////////////////////////////
 
