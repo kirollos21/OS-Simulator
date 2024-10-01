@@ -37,11 +37,9 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         }
     }
 
-    // Start the simulation timer
+    // Start the simulation timer and ensure the first timestamp is 0.000000
     accessTimer(ZERO_TIMER, timeStr);
-
-    // Immediately update elapsedTime after timer starts to avoid 0.000000 issue
-    elapsedTime = accessTimer(LAP_TIMER, timeStr);
+    elapsedTime = 0.000000;  // Set the initial time to zero explicitly
 
     // Print the title
     printTitle(configPtr, file, elapsedTime);
@@ -104,6 +102,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Stop the timer
     accessTimer(STOP_TIMER, timeStr);
 }
+
 
 /*
 Name: createNewNode
