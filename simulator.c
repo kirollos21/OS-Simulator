@@ -111,6 +111,24 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         fclose(file);
     }
 
+    elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Accumulate time again
+    printf("%1.6f, OS: Simulation end\n", elapsedTime);
+
+    if (file != NULL)
+    {
+       fprintf(file, "%1.6f, OS: Simulation end\n", elapsedTime);
+        fflush(file);
+    }
+
+    printf("\nSimulator Program End.\n\n");
+
+    if (file != NULL)
+    {
+        fprintf(file, "\nSimulator Program End.\n\n");
+        fflush(file);
+        fclose(file);
+    }
+
     // Stop the timer
     accessTimer(STOP_TIMER, timeStr);
 }

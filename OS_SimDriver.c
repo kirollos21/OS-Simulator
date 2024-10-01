@@ -92,10 +92,6 @@ int main(int argc, char *argv[])
 		// function: showCommandLineFormat
 		showCommandLineFormat();
 	}
-
-	// show program end
-	// function: printf
-	printf("\nSimulator Program End.\n\n");
 	// return success
 	return 0;
 }
