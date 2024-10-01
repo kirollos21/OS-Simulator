@@ -44,4 +44,24 @@ typedef struct OpCodeType
     struct OpCodeType *nextNode; // pointer to next node as needed
 } OpCodeType;
 
+// Five state data structure for processes
+typedef enum {
+    NEW_STATE,
+    READY_STATE,
+    RUNNING_STATE,
+    BLOCKED_STATE,
+    EXIT_STATE
+} ProcessState;
+
+
+typedef struct PCB
+{
+    int pid;
+    int time;
+    ProcessState currentState;
+    OpCodeType *mdPtr;
+    struct PCB *nextNode;
+
+}PCB;
+
 #endif

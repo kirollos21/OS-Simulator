@@ -14,26 +14,6 @@
 #include <pthread.h>
 #include <stdio.h>
 
-// Five state data structure for processes
-typedef enum {
-    NEW_STATE,
-    READY_STATE,
-    RUNNING_STATE,
-    BLOCKED_STATE,
-    EXIT_STATE
-} ProcessState;
-
-
-typedef struct PCB
-{
-    int pid;
-    int time;
-    ProcessState currentState;
-    OpCodeType *mdPtr;
-    struct PCB *nextNode;
-
-}PCB;
-
 /*
 Name: runSim
 process: primary simulation driver
@@ -137,20 +117,6 @@ Device Output/Device: None
 Dependencies: None
 */
 PCB *getNextProcess(PCB *currentProcess, OpCodeType *metaData);
-
-/*
-Name: getOpCode
-Process: Retrieves and displays the operation codes from metadata 
-based on the configuration settings
-Function Input/Parameters: Metadata pointer, Time stamp, Process ID, 
-Configuration pointer, File pointer
-Function Output/Parameters: None
-Function Output/Returned: None
-Device Input/File: None
-Device Output/Device: None
-Dependencies: None
-*/
-// void getOpCode(OpCodeType *metaDataPtr, double timeStamp, int pid, ConfigDataType *config, FILE *file);
 
 /*
 Name: printTitle
