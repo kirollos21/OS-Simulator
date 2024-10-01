@@ -18,92 +18,91 @@ Dependencies: tbd
 */
 void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
 {
-    //initialize variables
+    // Initialize variables
     OpCodeType *localMetaPtr = metaDataMstrPtr;
     PCB *newPCBList = createPCB_List(configPtr, localMetaPtr);
     PCB *wkgPtrPCB = newPCBList;
     char timeStr[10];
-    double elapsedTime = accessTimer(ZERO_TIMER, timeStr);
-    FILE* file = fopen(configPtr->logToFileName,"w");
+    double elapsedTime = 0.0;
+    FILE *file = NULL;
 
+    // Open the log file if logging to a file is required
+    if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
+    {
+        file = fopen(configPtr->logToFileName, "w");
+        if (file == NULL)
+        {
+            printf("Error: Unable to open log file\n");
+            return;
+        }
+    }
 
+    // Start the simulation timer
+    accessTimer(ZERO_TIMER, timeStr);
 
+    // Print the title
     printTitle(configPtr, file, elapsedTime);
-    //compute data 
-       //loop through the processes to display ready
-       while(wkgPtrPCB != NULL)
-       {
-          //set the process to ready
-          wkgPtrPCB->currentState = READY_STATE;
 
-          //lap the time
-             //function: accessTimer
-          elapsedTime = accessTimer(LAP_TIMER, timeStr);
+    // Loop through the PCB list
+    while (wkgPtrPCB != NULL)
+    {
+        // Set the process to ready
+        wkgPtrPCB->currentState = READY_STATE;
 
-          //get next process
-          wkgPtrPCB = wkgPtrPCB->nextNode;
-       }
-       //set the node back to the top of the list
-       wkgPtrPCB = newPCBList;
-       //loop until we go through the all the processes
-       while(wkgPtrPCB!=NULL)
-       { 
-            //lap the time
-            elapsedTime = accessTimer(LAP_TIMER, timeStr);
-            //Grabs the process
-               //function: getNextProcess
-            wkgPtrPCB = getNextProcess(wkgPtrPCB,localMetaPtr);
+        // Print the process ready state
+        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
 
-            //set to Running
-            wkgPtrPCB->currentState = RUNNING_STATE;
+        // Move to the next process
+        wkgPtrPCB = wkgPtrPCB->nextNode;
+    }
 
-            //Display remaining time and RUNNING state
-               //function: displayRunning
-            displayProcessState(configPtr, wkgPtrPCB, elapsedTime,file);
+    // Set the node back to the top of the list
+    wkgPtrPCB = newPCBList;
 
-            //loop through the operations 
-            while(compareString(wkgPtrPCB->mdPtr->strArg1,"end")!=STR_EQ)
-            {
-               //lap the time
-                    //function: accessTimer
-               elapsedTime = accessTimer(LAP_TIMER, timeStr);
-               
-            //display operation codes through different methods
-            displayOpCode(
-               configPtr, localMetaPtr, wkgPtrPCB, file,elapsedTime);
+    // Loop through all the processes for execution
+    while (wkgPtrPCB != NULL)
+    {
+        // Get the next process
+        wkgPtrPCB = getNextProcess(wkgPtrPCB, localMetaPtr);
 
-               //if we are not at the end of the list pof processes  
-               if(wkgPtrPCB->nextNode != NULL)
-               {
-                  //move to next process
-                  wkgPtrPCB = wkgPtrPCB->nextNode;
-               }
-               //otherwise | we are at the END END
-               else
-               {
-                  //set the working pointer to null
-                  wkgPtrPCB = NULL;
-                  //lap the time
-                     //function: accessTimer
-                  elapsedTime = accessTimer(LAP_TIMER, timeStr);
-                  //print that the system has ended 
-                     //function pritnf
-                  printf("%1.6f, OS: System stop\n", elapsedTime);
-                  //stop the timer
-                     //function: accessTimer
-                  elapsedTime = accessTimer(STOP_TIMER, timeStr);
-               }
+        // Set process state to RUNNING
+        wkgPtrPCB->currentState = RUNNING_STATE;
 
-            }
-       }
-       //lap the time
-       elapsedTime = accessTimer(LAP_TIMER, timeStr);
-       printf("%1.6f, OS: Simulator end\n", elapsedTime);
-       fflush(file);
-       fclose(file);
-    //end function
-       //return nothing
+        // Print process selection and transition to running state
+        printf("%1.6f, OS: Process %d selected with %d ms remaining\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->time);
+        printf("%1.6f, OS: Process %d set from READY to RUNNING\n", elapsedTime, wkgPtrPCB->pid);
+
+        if (file != NULL)
+        {
+            fprintf(file, "%1.6f, OS: Process %d selected with %d ms remaining\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->time);
+            fprintf(file, "%1.6f, OS: Process %d set from READY to RUNNING\n", elapsedTime, wkgPtrPCB->pid);
+        }
+
+        // Handle process operations (displayOpCode also updates the elapsed time)
+        displayOpCode(configPtr, wkgPtrPCB->mdPtr, wkgPtrPCB, file, &elapsedTime);
+
+        // Print the process exit status
+        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
+
+        // Move to the next process
+        wkgPtrPCB = wkgPtrPCB->nextNode;
+    }
+
+    // Print the system stop message
+    elapsedTime = accessTimer(LAP_TIMER, timeStr); // Final lap time for the system stop
+    printf("%1.6f, OS: System stop\n", elapsedTime);
+
+    if (file != NULL)
+    {
+        fprintf(file, "%1.6f, OS: System stop\n", elapsedTime);
+        fflush(file);
+        fclose(file);
+    }
+
+    // Stop the timer
+    accessTimer(STOP_TIMER, timeStr);
 }
+
 
 /*
 Name: createNewNode
@@ -250,11 +249,10 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: getOpCode, displayState functions
 */
-void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process, FILE *fileName, double time)
+void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process, FILE *fileName, double *elapsedTime)
 {
-    // Initialize variables
-    double operationTime;
-    
+    double operationTime = 0.0;  // Time for each operation
+
     // Loop through each operation in the metadata for the current process
     while (compareString(metaData->strArg1, "end") != STR_EQ)
     {
@@ -263,41 +261,26 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
         {
             // Calculate time for CPU operation (based on cycles and procCycleRate)
             operationTime = (metaData->intArg2 * configPtr->procCycleRate) / 1000.0;
-
-            // Update the elapsed time
-            time += operationTime;
-
-            // Print the CPU operation start and end
-            if (configPtr->logToCode == LOGTO_MONITOR_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
-            {
-                printf("%1.6f, Process: %d, cpu process operation start\n", time, process->pid);
-                printf("%1.6f, Process: %d, cpu process operation end\n", time, process->pid);
-            }
-            if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
-            {
-                fprintf(fileName, "%1.6f, Process: %d, cpu process operation start\n", time, process->pid);
-                fprintf(fileName, "%1.6f, Process: %d, cpu process operation end\n", time, process->pid);
-            }
         }
         else if (compareString(metaData->command, "dev") == STR_EQ)
         {
             // Calculate time for I/O operation (based on cycles and ioCycleRate)
             operationTime = (metaData->intArg2 * configPtr->ioCycleRate) / 1000.0;
+        }
 
-            // Update the elapsed time
-            time += operationTime;
+        // Add the operation time to the total elapsed time
+        *elapsedTime += operationTime;
 
-            // Print the I/O operation start and end
-            if (configPtr->logToCode == LOGTO_MONITOR_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
-            {
-                printf("%1.6f, Process: %d, %s %s operation start\n", time, process->pid, metaData->strArg1, metaData->command);
-                printf("%1.6f, Process: %d, %s %s operation end\n", time, process->pid, metaData->strArg1, metaData->command);
-            }
-            if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
-            {
-                fprintf(fileName, "%1.6f, Process: %d, %s %s operation start\n", time, process->pid, metaData->strArg1, metaData->command);
-                fprintf(fileName, "%1.6f, Process: %d, %s %s operation end\n", time, process->pid, metaData->strArg1, metaData->command);
-            }
+        // Print the operation start and end times
+        if (configPtr->logToCode == LOGTO_MONITOR_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
+        {
+            printf("%1.6f, Process: %d, %s %s operation start\n", *elapsedTime, process->pid, metaData->strArg1, metaData->command);
+            printf("%1.6f, Process: %d, %s %s operation end\n", *elapsedTime, process->pid, metaData->strArg1, metaData->command);
+        }
+        if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
+        {
+            fprintf(fileName, "%1.6f, Process: %d, %s %s operation start\n", *elapsedTime, process->pid, metaData->strArg1, metaData->command);
+            fprintf(fileName, "%1.6f, Process: %d, %s %s operation end\n", *elapsedTime, process->pid, metaData->strArg1, metaData->command);
         }
 
         // Move to the next operation in the metadata
@@ -310,16 +293,15 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
     // Display the process exit status
     if (configPtr->logToCode == LOGTO_MONITOR_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
     {
-        printf("%1.6f, OS: Process %d ended\n", time, process->pid);
-        printf("%1.6f, OS: Process %d set to EXIT\n", time, process->pid);
+        printf("%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
+        printf("%1.6f, OS: Process %d set to EXIT\n", *elapsedTime, process->pid);
     }
     if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
     {
-        fprintf(fileName, "%1.6f, OS: Process %d ended\n", time, process->pid);
-        fprintf(fileName, "%1.6f, OS: Process %d set to EXIT\n", time, process->pid);
+        fprintf(fileName, "%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
+        fprintf(fileName, "%1.6f, OS: Process %d set to EXIT\n", *elapsedTime, process->pid);
     }
 }
-
 
 /*
 Name: displayProcessState
