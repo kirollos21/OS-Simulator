@@ -29,105 +29,84 @@
 
 const char RADIX_POINT = '.';
 
-void runTimer( int milliSeconds )
-   {
+// Modify the runTimer function to handle different cycle times
+void *runTimer(void *arg)
+{
+    int *milliSeconds = (int *)arg;
     struct timeval startTime, endTime;
     int startSec, startUSec, endSec, endUSec;
     int uSecDiff, mSecDiff, secDiff, timeDiff;
 
-    gettimeofday( &startTime, NULL );
+    gettimeofday(&startTime, NULL);
  
     startSec = startTime.tv_sec;
     startUSec = startTime.tv_usec;
 
     timeDiff = 0;
 
-    while( timeDiff < milliSeconds )
-       {
-        gettimeofday( &endTime, NULL );
+    // Loop until the desired amount of milliseconds has passed
+    while (timeDiff < *milliSeconds)
+    {
+        gettimeofday(&endTime, NULL);
 
         endSec = endTime.tv_sec;
         endUSec = endTime.tv_usec;
         uSecDiff = endUSec - startUSec;
 
-        if( uSecDiff < 0 )
-           {
+        if (uSecDiff < 0)
+        {
             uSecDiff = uSecDiff + 1000000;
-
             endSec = endSec - 1;
-           }
+        }
 
         mSecDiff = uSecDiff / 1000;
-        secDiff = ( endSec - startSec ) * 1000;
+        secDiff = (endSec - startSec) * 1000;
         timeDiff = secDiff + mSecDiff;
-       }
-   }
+    }
 
-double accessTimer( int controlCode, char *timeStr )
-   {
+    return NULL;
+}
+
+// Ensure accurate timing for different operations (CPU, I/O)
+double accessTimer(int controlCode, char *timeStr)
+{
     static bool running = false;
     static int startSec = 0, endSec = 0, startUSec = 0, endUSec = 0;
-    static int lapSec = 0, lapUSec = 0;
-    struct timeval startData, lapData, endData;
+    struct timeval startData, endData;
     double fpTime = 0.0;
 
-    switch( controlCode )
-       {
+    switch (controlCode)
+    {
         case ZERO_TIMER:
-           gettimeofday( &startData, NULL );
-           running = true;
+            gettimeofday(&startData, NULL);
+            running = true;
 
-           startSec = startData.tv_sec;
-           startUSec = startData.tv_usec;
+            startSec = startData.tv_sec;
+            startUSec = startData.tv_usec;
 
-           fpTime = 0.000000000;
-           lapSec = 0.000000000;
-           lapUSec = 0.000000000;
-
-           timeToString( lapSec, lapUSec, timeStr ); 
-           break;
-           
-        case LAP_TIMER:
-           if( running == true )
-              {
-               gettimeofday( &lapData, NULL );
-
-               lapSec = lapData.tv_sec;
-               lapUSec = lapData.tv_usec;
-
-               fpTime = processTime( startSec, lapSec, 
-                                                 startUSec, lapUSec, timeStr );
-              }
-
-           else
-              {
-               fpTime = 0.000000000;
-              }
-           break;
+            fpTime = 0.000000000;
+            break;
 
         case STOP_TIMER:
-           if( running == true )
-              {
-               gettimeofday( &endData, NULL );
-               running = false;
+            if (running == true)
+            {
+                gettimeofday(&endData, NULL);
+                running = false;
 
-               endSec = endData.tv_sec;
-               endUSec = endData.tv_usec;
+                endSec = endData.tv_sec;
+                endUSec = endData.tv_usec;
 
-               fpTime = processTime( startSec, endSec, 
-                                                 startUSec, endUSec, timeStr );
-              }
-
-           // assume timer not running
-           else
-              {
-               fpTime = 0.000000000;
-              }
-           break;
-       }
+                fpTime = processTime(startSec, endSec, startUSec, endUSec, timeStr);
+            }
+            else
+            {
+                fpTime = 0.000000000;
+            }
+            break;
+    }
 
     return fpTime;
-   }
+}
 
 double processTime( double startSec, double endSec, 
                            double startUSec, double endUSec, char *timeStr )
