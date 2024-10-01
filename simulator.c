@@ -363,7 +363,7 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: None
 */
-void displayProcessState(ConfigDataType config, PCB *process, double lapTime, FILE file) 
+void displayProcessState(ConfigDataType *config, PCB *process, double lapTime, FILE* file) 
 {
     // Check logToCode value for monitor
     if (config->logToCode == LOGTO_MONITOR_CODE || config->logToCode == LOGTO_BOTH_CODE) 
@@ -438,7 +438,7 @@ Device Input/File: None
 Device Output/Device: File
 Dependencies: None
 */
-void displayToFile(PCB process, double lapTime, FILE file) 
+void displayToFile(PCB *process, double lapTime, FILE* file) 
 {
    //depending on the currentState - file
     switch (process->currentState) 
@@ -604,7 +604,7 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: None
 */
-void printTitle(ConfigDataType config, FILE fileName, double time)
+void printTitle(ConfigDataType *config, FILE* fileName, double time)
 {
    if (config->logToCode==LOGTO_MONITOR_CODE)
    {   
