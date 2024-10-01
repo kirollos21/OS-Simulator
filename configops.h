@@ -1,15 +1,11 @@
-//  File: configops.h
-//  Project: Sim01
-//  Secret ID: 708996
-//  Date: 09/07/2024 & 09/08/2024
+// protect from multiple compiling
+#ifndef CONFIG_OPS_H
+#define CONFIG_OPS_H
 
-#ifndef configops_h
-#define configops_h
-#include <stdio.h>
-#include <stdbool.h>
+// header files
 #include "StandardConstants.h"
-#include "datatypes.h"
 #include "StringUtils.h"
+#include "datatypes.h"
 
 // GLOBAL CONSTANTS - may be used in other files
 typedef enum { CFG_FILE_ACCESS_ERR,
@@ -25,8 +21,7 @@ typedef enum { CFG_FILE_ACCESS_ERR,
                CFG_PROC_CYCLES_CODE,
                CFG_IO_CYCLES_CODE,
                CFG_LOG_TO_CODE,
-               CFG_LOG_FILE_NAME_CODE
-             } ConfigCodeMessages;
+               CFG_LOG_FILE_NAME_CODE } ConfigCodeMessages;
 
 typedef enum { CPU_SCHED_SJF_N_CODE,
                CPU_SCHED_SRTF_P_CODE,
@@ -37,23 +32,11 @@ typedef enum { CPU_SCHED_SJF_N_CODE,
                LOGTO_FILE_CODE,
                LOGTO_BOTH_CODE,
                NON_PREEMPTIVE_CODE,
-               PREEMPTIVE_CODE
-             } ConfigDataCodes;
+               PREEMPTIVE_CODE } ConfigDataCodes;
+
+
 
 // function prototypes
-
-/*
-Name: getConfigData
-Process: Driver function for capturing configuration data from a config file
-Function Input/Parameters: file name (const char *)
-Function Output/Parameters: pointer to config data pointer (ConfigDataType **),
-                            end/result state message pointer (char *)
-Function Output/Returned: Boolean result of data access operation (bool)
-Device Input/Keyboard: config data uploaded
-Device Output/Monitor: none
-Dependencies: tbd
-*/
-bool getConfigData(const char *fileName, ConfigDataType **configData, char *endStateMsg);
 
 /*
 Name: clearConfigData
@@ -66,7 +49,7 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: tbd
 */
-ConfigDataType *clearConfigData(ConfigDataType *configData);
+ConfigDataType *clearConfigData( ConfigDataType *configData );
 
 /*
 Name: configCodeToString
@@ -79,7 +62,7 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: copyString
 */
-void configCodeToString(int code, char *outString);
+void configCodeToString( int code, char *outString );
 
 /*
 Name: displayConfigData
@@ -91,7 +74,34 @@ Device Input/Keyboard: none
 Device Output/Monitor: displayed as specified
 Dependencies: tbd
 */
-void displayConfigData(ConfigDataType *configData);
+void displayConfigData( ConfigDataType *configData );
+
+/*
+Name: getConfigData
+Process: Driver function for capturing configuration data from a config file
+Function Input/Parameters: file name (const char *)
+Function Output/Parameters: pointer to config data pointer (ConfigDataType **),
+                            end/result state message pointer (char *)
+Function Output/Returned: Boolean result of data access operation (bool)
+Device Input/Keyboard: config data uploaded
+Device Output/Monitor: none
+Dependencies: tbd
+*/
+bool getConfigData( const char *fileName,
+                              ConfigDataType **configData, char *endStateMsg );
+
+/*
+Name: getCpuSchedCode
+Process: converts cpu schedule string to code (all scheduling possibilities)
+Function Input/Parameters: lower case code string (const char *)
+Function Output/Parameters: none
+Function Output/Returned: cpu schedule code (ConfigDataCodes)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: compareString    
+*/
+ConfigDataCodes getCpuSchedCode( const char *lowerCaseCodeStr );
+
 
 /*
 Name: getDataLineCode
@@ -104,7 +114,7 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: compareString
 */
-ConfigCodeMessages getDataLineCode(const char *dataBuffer);
+ConfigCodeMessages getDataLineCode(const char *dataBuffer );
 
 /*
 Name: getLogToCode
@@ -117,7 +127,8 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: compareString
 */
-ConfigDataCodes getLogToCode(const char *lowerCaseLogToStr);
+ConfigDataCodes getLogToCode( const char *lowerCaseLogToStr );
+
 
 /*
 Name: stripTrailingSpaces
@@ -129,7 +140,8 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: getStringLength
 */
-void stripTrailingSpaces(char *str);
+void stripTrailingSpaces( char *str );
+
 
 /*
 Name: valueInRange
@@ -145,18 +157,8 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: getStringLength
 */
-bool valueInRange(int lineCode, int intVal, double doubleVal, const char * lowerCaseStringVal);
+bool valueInRange( int lineCode, int intVal, double doubleVal,
+                                             const char * lowerCaseStringVal );
 
-/*
-Name: getCpuSchedCode
-Process: converts cpu schedule string to code (all scheduling possibilities)
-Function Input/Parameters: lower case code string (const char *)
-Function Output/Parameters: none
-Function Output/Returned: cpu schedule code (ConfigDataCodes)
-Device Input/Keyboard: none
-Device Output/Monitor: none
-Dependencies: compareString
-*/
-ConfigDataCodes getCpuSchedCode(const char *lowerCaseCodeStr);
 
-#endif
+#endif  // CONFIG_OPS_h

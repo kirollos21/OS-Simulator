@@ -1,34 +1,30 @@
-//  File: OS_SimDriver.h
-//  Project: Sim01
-//  Secret ID: 708996
-//  Date: 09/07/2024 & 09/08/2024
-
 // protect from multiple compiling
-#ifndef OS_SimDriver_h
-#define OS_SimDriver_h
+#ifndef OS_SIM_DRIVER_H
+#define OS_SIM_DRIVER_H
 
 // header files
 #include <stdio.h>
 #include "datatypes.h"
+#include "StringUtils.h"
 #include "configops.h"
 #include "metadataops.h"
 #include "simulator.h"
-#include "StringUtils.h"
-#include <stdbool.h>
 
-// Program Constants
-typedef enum { MIN_NUM_ARGS = 3, LAST_FOUR_LETTERS = 4} PRGRM_CONSTANTS;
+// program constants
+typedef enum { MIN_NUM_ARGS = 3, LAST_FOUR_LETTERS = 4 } PRGRM_CONSTANTS;
 
-// Command Line struct for string command line switch settings
+// command line struct for storing command line switch settings
 typedef struct CmdLineDataStruct
 {
-	bool programRunFlag;
-	bool configDisplayFlag;
-	bool mdDisplayFlag;
-	bool runSimFlag;
+    bool programRunFlag;      // program name
+    bool configDisplayFlag;   // -dc
+    bool mdDisplayFlag;       // -dm
+    bool runSimFlag;          // -rs
 
-	char fileName[ STD_STR_LEN ];
+    char fileName[ STD_STR_LEN ];
 } CmdLineData;
+
+// function prototypes
 
 /*
 Name: clearCmdLineStruct
@@ -42,39 +38,38 @@ Device Input/Keyboard: none
 Device Output/Monitor: none
 Dependencies: none
 */
-void clearCmdLineStruct(CmdLineData *clDataPtr);
+void clearCmdLineStruct( CmdLineData *clDataPtr );
 
 /*
- Name: processCmdLine
- Process:   checks for at least two arguments,
-            then sets Booleans depending on command Line switches
-            which can be in any order,
-            also captures config file name which must be the last argument
- Function Input/Parameters: number of arguments (int),
-                            vector of arguments (char **o<
- Function Output/Parameters:    pointer to command Line structure (CmdLineData *)
-                                with updated members,
-                                set to default values if failure
-                                to capture arguments
- Function Output/Returned:  Boolean result of argument capture,
-                            true if at least one switch and config file name,
-                            false otherwise
- Device Input/device: none
- Device Output/device: none
- Dependencies: tbd
- */
-bool processCmdLine(int numArgs, char **strVector, CmdLineData *clDataPtr);
+Name: processCmdLine
+Process: Checks for at least two arguements, then sets Booleans
+         depending on command line switches which can be in any order,
+         also captures config file name, which must be the last argument
+Function Input/Parameters: number of arguments (int),
+                           vector of arguments (char **)
+Function Output/Parameters: pointer to command line structure (CmdLineData *)
+                            with updated members, set to default 
+                           values if failure to capture arguments
+Function Output/Returned: Boolean result of argument capture,
+                          true if at least one switch and config file name,
+                          false otherwise
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: tbd
+*/
+bool processCmdLine( int numArgs, char **strVector, CmdLineData *clDataPtr );
 
 /*
 Name: showCommandLineFormat
-Process: displays command Line format as assistance to user
+Process: displays command line format as assistance to user
 Function Input/Parameters: none
 Function Output/Parameters: none
 Function Output/Returned: none
-Device Input/device: none
-Device Output/monitor: data displayed as specified
-Dependencies: printf
+Device Input/Keyboard: none
+Device Output/Monitor: data displayed as specified
+Dependencies: tbd
 */
 void showCommandLineFormat();
 
-#endif
+
+#endif   // OS_SIM_DRIVER_H
