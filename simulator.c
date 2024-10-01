@@ -259,46 +259,82 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: getOpCode, displayState functions
 */
-void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process, FILE *fileName, double *elapsedTime)
+void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process, FILE *file, double *elapsedTime)
 {
     double operationTime = 0.0;  // Time for each operation
+    double startElapsed = *elapsedTime;  // Hold start time for precise increments
 
     // Loop through each operation in the metadata for the current process
     while (compareString(metaData->strArg1, "end") != STR_EQ)
     {
-        // Check if the command is "app start" or "app end", which should not generate logs
-        if (compareString(metaData->command, "app") == STR_EQ)
-        {
-            // Move to the next operation without logging "app start" or "app end"
-            metaData = metaData->nextNode;
-            continue;
-        }
-
         // Determine the type of operation (CPU or I/O)
         if (compareString(metaData->command, "cpu") == STR_EQ)
         {
-            // Calculate time for CPU operation (based on cycles and procCycleRate)
+            // CPU process operation: adjust timing according to CPU cycle rate
             operationTime = (metaData->intArg2 * configPtr->procCycleRate) / 1000.0;
         }
         else if (compareString(metaData->command, "dev") == STR_EQ)
         {
-            // Calculate time for I/O operation (based on cycles and ioCycleRate)
+            // Device I/O operation: adjust timing according to IO cycle rate
             operationTime = (metaData->intArg2 * configPtr->ioCycleRate) / 1000.0;
         }
 
-        // Add the operation time to the total elapsed time
+        // Log start of operation
+        if (compareString(metaData->command, "cpu") == STR_EQ)
+        {
+            // CPU operation
+            printf("  %1.6f, Process: %d, cpu process operation start\n", *elapsedTime, process->pid);
+            if (file != NULL)
+            {
+                fprintf(file, "  %1.6f, Process: %d, cpu process operation start\n", *elapsedTime, process->pid);
+            }
+        }
+        else if (compareString(metaData->command, "dev") == STR_EQ && compareString(metaData->strArg1, "in") == STR_EQ)
+        {
+            // Input device operation
+            printf("  %1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg2);
+            if (file != NULL)
+            {
+                fprintf(file, "  %1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg2);
+            }
+        }
+        else if (compareString(metaData->command, "dev") == STR_EQ && compareString(metaData->strArg1, "out") == STR_EQ)
+        {
+            // Output device operation
+            printf("  %1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg2);
+            if (file != NULL)
+            {
+                fprintf(file, "  %1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg2);
+            }
+        }
+
+        // Update elapsed time for operation duration
         *elapsedTime += operationTime;
 
-        // Log the operation start and end, but only for CPU and device operations
-        if (configPtr->logToCode == LOGTO_MONITOR_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
+        // Log end of operation
+        if (compareString(metaData->command, "cpu") == STR_EQ)
         {
-            printf("%1.6f, Process: %d, %s %s operation start\n", *elapsedTime, process->pid, metaData->strArg1, metaData->command);
-            printf("%1.6f, Process: %d, %s %s operation end\n", *elapsedTime, process->pid, metaData->strArg1, metaData->command);
+            printf("  %1.6f, Process: %d, cpu process operation end\n", *elapsedTime, process->pid);
+            if (file != NULL)
+            {
+                fprintf(file, "  %1.6f, Process: %d, cpu process operation end\n", *elapsedTime, process->pid);
+            }
         }
-        if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
+        else if (compareString(metaData->command, "dev") == STR_EQ && compareString(metaData->strArg1, "in") == STR_EQ)
         {
-            fprintf(fileName, "%1.6f, Process: %d, %s %s operation start\n", *elapsedTime, process->pid, metaData->strArg1, metaData->command);
-            fprintf(fileName, "%1.6f, Process: %d, %s %s operation end\n", *elapsedTime, process->pid, metaData->strArg1, metaData->command);
+            printf("  %1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg2);
+            if (file != NULL)
+            {
+                fprintf(file, "  %1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg2);
+            }
+        }
+        else if (compareString(metaData->command, "dev") == STR_EQ && compareString(metaData->strArg1, "out") == STR_EQ)
+        {
+            printf("  %1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg2);
+            if (file != NULL)
+            {
+                fprintf(file, "  %1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg2);
+            }
         }
 
         // Move to the next operation in the metadata
@@ -309,18 +345,12 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
     process->currentState = EXIT_STATE;
 
     // Display the process exit status
-    if (configPtr->logToCode == LOGTO_MONITOR_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
+    printf("  %1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
+    if (file != NULL)
     {
-        printf("%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
-        printf("%1.6f, OS: Process %d set to EXIT\n", *elapsedTime, process->pid);
-    }
-    if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
-    {
-        fprintf(fileName, "%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
-        fprintf(fileName, "%1.6f, OS: Process %d set to EXIT\n", *elapsedTime, process->pid);
+        fprintf(file, "  %1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
     }
 }
-
 
 /*
 Name: displayProcessState
