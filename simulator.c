@@ -79,8 +79,12 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
             fprintf(file, "%1.6f, OS: Process %d set from READY to RUNNING\n", elapsedTime, wkgPtrPCB->pid);
         }
 
-        // Handle process operations (displayOpCode also updates the elapsed time)
-        displayOpCode(configPtr, wkgPtrPCB->mdPtr, wkgPtrPCB, file, &elapsedTime);
+        // Handle process operations, skip 'app start' operations
+        if (wkgPtrPCB->mdPtr->opLtr != 'A' && strcmp(wkgPtrPCB->mdPtr->opName, "start") != 0)
+        {
+            // Handle process operations (displayOpCode also updates the elapsed time)
+            displayOpCode(configPtr, wkgPtrPCB->mdPtr, wkgPtrPCB, file, &elapsedTime);
+        }
 
         // Print the process exit status
         wkgPtrPCB->currentState = EXIT_STATE;
@@ -104,6 +108,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Stop the timer
     accessTimer(STOP_TIMER, timeStr);
 }
+
 
 /*
 Name: createNewNode
