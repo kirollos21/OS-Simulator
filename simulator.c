@@ -43,7 +43,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Print the title
     printTitle(configPtr, file, elapsedTime);
 
-    // Loop through the PCB list
+    // Loop through the PCB list to set processes to READY state
     while (wkgPtrPCB != NULL)
     {
         // Set the process to ready
@@ -56,14 +56,14 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         wkgPtrPCB = wkgPtrPCB->nextNode;
     }
 
-    // Set the node back to the top of the list
+    // Reset the pointer to the top of the list
     wkgPtrPCB = newPCBList;
 
     // Loop through all the processes for execution
     while (wkgPtrPCB != NULL)
     {
-        // Get the next process
-        wkgPtrPCB = getNextProcess(wkgPtrPCB, localMetaPtr);
+        // Lap the time to get the current elapsed time
+        elapsedTime = accessTimer(LAP_TIMER, timeStr);
 
         // Set process state to RUNNING
         wkgPtrPCB->currentState = RUNNING_STATE;
@@ -81,7 +81,11 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         // Handle process operations (displayOpCode also updates the elapsed time)
         displayOpCode(configPtr, wkgPtrPCB->mdPtr, wkgPtrPCB, file, &elapsedTime);
 
-        // Print the process exit status
+        // Lap the time after process execution
+        elapsedTime = accessTimer(LAP_TIMER, timeStr);
+
+        // Set process to EXIT state and print the status
+        wkgPtrPCB->currentState = EXIT_STATE;
         displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
 
         // Move to the next process
@@ -102,7 +106,6 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Stop the timer
     accessTimer(STOP_TIMER, timeStr);
 }
-
 
 /*
 Name: createNewNode
