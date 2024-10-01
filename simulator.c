@@ -80,11 +80,13 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         // Print process selection and transition to running state
         printf("%1.6f, OS: Process %d selected with %d ms remaining\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->time);
         printf("%1.6f, OS: Process %d set from READY to RUNNING\n", elapsedTime, wkgPtrPCB->pid);
+        printf("\n");
 
         if (file != NULL)
         {
             fprintf(file, "%1.6f, OS: Process %d selected with %d ms remaining\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->time);
             fprintf(file, "%1.6f, OS: Process %d set from READY to RUNNING\n", elapsedTime, wkgPtrPCB->pid);
+            fprintf(file, "\n");
         }
 
         // Handle process operations (displayOpCode also updates the elapsed time)
@@ -273,10 +275,10 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
             operationTime = (metaData->intArg2 * configPtr->procCycleRate) / 1000.0;
 
             // Log CPU process operation start
-            printf("  %1.6f, Process: %d, cpu process operation start\n", *elapsedTime, process->pid);
+            printf("%1.6f, Process: %d, cpu process operation start\n", *elapsedTime, process->pid);
             if (file != NULL)
             {
-                fprintf(file, "  %1.6f, Process: %d, cpu process operation start\n", *elapsedTime, process->pid);
+                fprintf(file, "%1.6f, Process: %d, cpu process operation start\n", *elapsedTime, process->pid);
             }
         }
         else if (compareString(metaData->inOutArg, "in") == STR_EQ)
@@ -285,10 +287,10 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
             operationTime = (metaData->intArg2 * configPtr->ioCycleRate) / 1000.0;
 
             // Log input device operation start
-            printf("  %1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg1);
+            printf("%1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg1);
             if (file != NULL)
             {
-                fprintf(file, "  %1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg1);
+                fprintf(file, "%1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg1);
             }
         }
         else if (compareString(metaData->inOutArg, "out") == STR_EQ)
@@ -297,10 +299,10 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
             operationTime = (metaData->intArg2 * configPtr->ioCycleRate) / 1000.0;
 
             // Log output device operation start
-            printf("  %1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg1);
+            printf("%1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg1);
             if (file != NULL)
             {
-                fprintf(file, "  %1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg1);
+                fprintf(file, "%1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg1);
             }
         }
 
@@ -310,26 +312,26 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
         // Log end of operation
         if (compareString(metaData->command, "cpu") == STR_EQ)
         {
-            printf("  %1.6f, Process: %d, cpu process operation end\n", *elapsedTime, process->pid);
+            printf("%1.6f, Process: %d, cpu process operation end\n", *elapsedTime, process->pid);
             if (file != NULL)
             {
-                fprintf(file, "  %1.6f, Process: %d, cpu process operation end\n", *elapsedTime, process->pid);
+                fprintf(file, "%1.6f, Process: %d, cpu process operation end\n", *elapsedTime, process->pid);
             }
         }
         else if (compareString(metaData->inOutArg, "in") == STR_EQ)
         {
-            printf("  %1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg1);
+            printf("%1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg1);
             if (file != NULL)
             {
-                fprintf(file, "  %1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg1);
+                fprintf(file, "%1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg1);
             }
         }
         else if (compareString(metaData->inOutArg, "out") == STR_EQ)
         {
-            printf("  %1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg1);
+            printf("%1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg1);
             if (file != NULL)
             {
-                fprintf(file, "  %1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg1);
+                fprintf(file, "%1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg1);
             }
         }
 
@@ -341,10 +343,13 @@ void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process
     process->currentState = EXIT_STATE;
 
     // Display the process exit status
-    printf("  %1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
+    
+    printf("\n");
+    printf("%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
     if (file != NULL)
     {
-        fprintf(file, "  %1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
+        fprintf(file, "\n");
+        fprintf(file, "%1.6f, OS: Process %d ended\n", *elapsedTime, process->pid);
     }
 }
 
@@ -403,12 +408,14 @@ void displayToMonitor(PCB *process, double lapTime)
                 //function: printf
             printf("%1.6f, OS: Process %d selected with %d ms remaining\n", lapTime, process->pid, process->time);
             printf("%1.6f, OS: Process %d set from READY to RUNNING\n\n", lapTime, process->pid);
+            printf("\n");
             break;
 
        //EXITING
         case EXIT_STATE:
             //print exiting statment
                //function: printf
+            printf("\n");
             printf("%1.6f, OS: Process %d ended\n", lapTime, process->pid);
             printf("%1.6f, OS: Process %d set to EXIT\n", lapTime, process->pid);
             break;
@@ -451,12 +458,15 @@ void displayToFile(PCB *process, double lapTime, FILE* file)
             fflush(file);
             fprintf(file, "%1.6f, OS: Process %d set from READY to RUNNING\n\n", lapTime, process->pid);
             fflush(file);
+            fprintf(file, "\n");
+            fflush(file);
             break;
 
        //Exiting
         case EXIT_STATE:
             //print EXITING statment to file
             //function: fprintf
+            fprintf(file, "\n");
             fprintf(file, "%1.6f, OS: Process %d ended\n", lapTime, process->pid);
             fflush(file);
             fprintf(file, "%1.6f, OS: Process %d set to EXIT\n", lapTime, process->pid);
