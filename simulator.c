@@ -117,7 +117,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     if (file != NULL)
     {
        fprintf(file, "%1.6f, OS: Simulation end\n", elapsedTime);
-        fflush(file);
+       fflush(file);
     }
 
     printf("\nSimulator Program End.\n\n");
