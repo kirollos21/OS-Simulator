@@ -1,637 +1,719 @@
-//  File: simulator.c
-//  Project: Sim02
-//  Secret ID: 708996
-//  Date: 09/30/2024
+#include "Simulator.h"
+#include "DataTypes.h"
+#include "StringUtils.h"
+#include <stdio.h>
+#include <pthread.h>
 
-#include "simulator.h"
 
 /*
-Name: runSim
-process: primary simulation driver
-Function Input/Parameters:  configuration data (ConfigDataType *),
-                            metadata (OpCodeType *)
-Function Output/Parameters: none
-Function Output/Returned: none
-Device Input/device: none
-Device Output/device: none
+runSim
+primary simulation driver
+output parameters: none
+output returned: none
 Dependencies: tbd
 */
-void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
+//biggest project, not part of SIM-01 "does it all"
+void runSim( ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
 {
-	// Initialize variables
-	OpCodeType *localMetaPtr = metaDataMstrPtr;
-	PCB *newPCBList = createPCB_List(configPtr, localMetaPtr);
-	PCB *wkgPtrPCB = newPCBList;
-	char timeStr[10];
-	double elapsedTime = 0.0;   // Global elapsed time tracker
-	FILE *file = NULL;
+	printf("\nSimulator Run\n");
+	printf("---------------\n\n");
 
-	// Open the log file if logging to a file is required
-	if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
-	{
-		file = fopen(configPtr->logToFileName, "w");
-		if (file == NULL)
-		{
-			printf("Error: Unable to open log file\n");
-			return;
-		}
-	}
+	//create pcb object, and queue
+	//OpCodeType *wkgMasterPtr;
+	PCBLinkedList *pcbList;
+	PCBObj *pcbPtr;
+	int currentPid;
 
-	// Start the simulation timer and ensure the first timestamp is 0.000000
+	//strings for output and time management
+	char simulatorOutput[ MAX_STR_LEN ];
+	char timeStr[ MAX_STR_LEN ];
+
+	//start sim/clock
 	accessTimer(ZERO_TIMER, timeStr);
-	elapsedTime = 0.000000;  // Set the initial time to zero explicitly
 
-	// Print the title
-	printTitle(configPtr, file, elapsedTime);
+	//log timer start
+	sprintf( simulatorOutput, "%f, OS: Simulator start\n", accessTimer(LAP_TIMER, timeStr ));
+	logOutput( configPtr, simulatorOutput, false );
 
-	// Immediately update elapsed time after timer starts for accurate state transitions
-	elapsedTime += accessTimer(LAP_TIMER, timeStr);
+	//create Process list
+	pcbList = createProcessList();
 
-	// Store a constant timestamp for the READY state transitions
-	double readyTimestamp = elapsedTime;
+	//fill in processes
+	pcbList = fillProcessList( configPtr, metaDataMstrPtr, pcbList );
 
-	// Loop through the PCB list and set to READY state, using the same timestamp for all processes
-	while (wkgPtrPCB != NULL)
+	//set local PCB ptr to first process in list
+	pcbPtr = pcbList->headPtr;
+
+	//calculate time to load all PCBs
+	int *totalPCBTime = malloc( sizeof( int ));
+	*totalPCBTime = 0;
+
+	/*while( pcbPtr != NULL )
 	{
-		wkgPtrPCB->currentState = READY_STATE;
-
-		// Log the state transition for each process with the same timestamp
-		displayProcessState(configPtr, wkgPtrPCB, readyTimestamp, file);
-
-		// Move to the next process in the list
-		wkgPtrPCB = wkgPtrPCB->nextNode;
+		*totalPCBTime = *totalPCBTime + pcbPtr->timeLeft;
+		pcbPtr = pcbPtr->nextPtr;
 	}
+	pcbPtr = pcbList->headPtr;
+	*/
+	
 
-	// Reset working PCB pointer to the start of the list
-	wkgPtrPCB = newPCBList;
+	//implement PThreads
+	pthread_t *cpuThread = (pthread_t*)malloc( sizeof( pthread_t ));
+	pthread_create( cpuThread, NULL, simThread, totalPCBTime );
 
-	// Loop through all the processes for execution
-	while (wkgPtrPCB != NULL)
+	double *processTimeLeft = malloc(sizeof(double));
+	*processTimeLeft = pcbPtr->timeLeft;
+
+	// set the current process id to the first scheduled process FCFS for now
+    currentPid = scheduleProcess(pcbList, configPtr);
+
+	//loop through process queue (while head != null)
+	while( pcbPtr != NULL )
 	{
-		// Get the next process
-		wkgPtrPCB = getNextProcess(wkgPtrPCB, localMetaPtr);
-
-		// Set process state to RUNNING
-		wkgPtrPCB->currentState = RUNNING_STATE;
-
-		// Update elapsed time before logging
-		elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Accumulate global time
-
-		// Print process selection and transition to running state
-		if (configPtr->logToCode != LOGTO_FILE_CODE)
+		if( pcbPtr->pid == currentPid )
 		{
-			printf("%1.6f, OS: Process %d selected with %d ms remaining\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->time);
-			printf("%1.6f, OS: Process %d set from READY to RUNNING\n", elapsedTime, wkgPtrPCB->pid);
-			printf("\n");
-		}
-
-		if (file != NULL)
-		{
-			fprintf(file, "%1.6f, OS: Process %d selected with %d ms remaining\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->time);
-			fprintf(file, "%1.6f, OS: Process %d set from READY to RUNNING\n", elapsedTime, wkgPtrPCB->pid);
-			fprintf(file, "\n");
-		}
-
-		// Handle process operations (displayOpCode also updates the elapsed time)
-		displayOpCode(configPtr, wkgPtrPCB->mdPtr, wkgPtrPCB, file, &elapsedTime);
-
-		// Print the process exit status
-		wkgPtrPCB->currentState = EXIT_STATE;
-		displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);  // Log EXIT state
-
-		// Move to the next process
-		wkgPtrPCB = wkgPtrPCB->nextNode;
-	}
-
-	// Print the system stop message
-	elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Final time accumulation
-
-	if (configPtr->logToCode != LOGTO_FILE_CODE)
-	{
-		printf("%1.6f, OS: System stop\n", elapsedTime);
-	}
-
-	if (file != NULL)
-	{
-		fprintf(file, "%1.6f, OS: System stop\n", elapsedTime);
-		fflush(file);
-	}
-
-	elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Accumulate time again
-
-	if (configPtr->logToCode != LOGTO_FILE_CODE)
-	{
-		printf("%1.6f, OS: Simulation end\n", elapsedTime);
-	}
-
-	if (file != NULL)
-	{
-		fprintf(file, "%1.6f, OS: Simulation end\n", elapsedTime);
-		fflush(file);
-	}
-
-	if (configPtr->logToCode != LOGTO_FILE_CODE)
-	{
-		printf("\nSimulator Program End.\n\n");
-	}
-
-	if (file != NULL)
-	{
-		fprintf(file, "\nSimulator Program End.\n\n");
-		fflush(file);
-		fclose(file);
-	}
-
-	// Stop the timer
-	accessTimer(STOP_TIMER, timeStr);
-}
-
-
-/*
-Name: createNewNode
-Process: Allocates memory for a new PCB node and initializes its
-nextNode pointer to NULL
-Function Input/Parameters: pointer to an existing PCB node
-Function Output/Parameters: Newly created PCB node pointer
-Function Output/Returned: Newly created PCB node pointer
-Device Input/File: None
-Device Output/Device: None
-Dependencies: None
-*/
-PCB *createNewNode(PCB *pointer)
-{
-	//initialize variables
-
-	//compute data
-	//allocate memory
-	pointer->nextNode = (PCB *)malloc(sizeof(PCB));
-	//move to next pointer
-	pointer = pointer->nextNode;
-	//set next node to null
-	pointer->nextNode = NULL;
-
-	//return pointer
-	return pointer;
-}
-
-/*
-Name: createPCB_List
-Process: Creates a linked list of PCB nodes based on the configuration
-and metadata
-Function Input/Parameters: Configuration pointer, Metadata pointer
-Function Output/Parameters: None
-Function Output/Returned: Head pointer of the created PCB linked list
-Device Input/File: None
-Device Output/Device: None
-Dependencies: createNewNode function
-*/
-PCB *createPCB_List ( ConfigDataType *configPtr, OpCodeType *metaData)
-{
-	//intialize variables
-	OpCodeType *metaPtr = metaData;
-	int pid = 0;
-	PCB *headPtrProcess = NULL;
-	PCB *wkgPtrProcess = NULL;
-	//compute data
-	//loop across the metaData until sys end
-	while(metaPtr != NULL)
-	{
-		//check for app start
-		//function: compareString
-		if (compareString(metaPtr->command, "app"
-		                 ) == STR_EQ && compareString(
-		            metaPtr->strArg1, "start") == STR_EQ)
-		{
-			//check if the we are at the beginning
-			if (pid == 0)
-			{
-				//set the first node to the pcb head ptr
-				headPtrProcess = (PCB *)malloc(sizeof(PCB));
-
-				//set values of the headptr - createnodefunction
-				headPtrProcess->nextNode = NULL;
-
-				//set working ptr to head
-				wkgPtrProcess = headPtrProcess;
-			}
-			//otherwise we are not at the beginning but it is a new process
-			else
-			{
-				//create new node
-				//function: createNewNode
-				wkgPtrProcess->nextNode = createNewNode(wkgPtrProcess);
-
-				//move to next ptr
-				wkgPtrProcess = wkgPtrProcess->nextNode;
-			}
-
-			//set PCB nodes
-			//set pid
-			metaPtr->pid = pid;
-			wkgPtrProcess->pid = pid;
-			//advance the pid
-			pid++;
-
-			//set time remaining to zero
-			wkgPtrProcess->time = 0.0;
-
-			//set state = NEW
-			wkgPtrProcess->currentState = NEW_STATE;
-
-			//set pointer to the current md node
-			wkgPtrProcess->mdPtr = metaPtr;
-
-			//loop to the end of the proces
-			while( compareString(wkgPtrProcess->mdPtr->command,
-			                     "app")!= STR_EQ || compareString(
-			            wkgPtrProcess->mdPtr->strArg1, "end")!= STR_EQ)
-			{
-				//move the metadata node to the next node
-				metaPtr = metaPtr->nextNode;
-
-				//Milliseconds = config time * the cycle rate (in arg2)
-				//check for CPU/Process
-				//function: compareString
-				if(compareString(wkgPtrProcess->mdPtr->command, "cpu")==STR_EQ)
-				{
-					//add the calculated cpu time to remain time
-					wkgPtrProcess->time += (
-					                           wkgPtrProcess->mdPtr->intArg2 * configPtr->procCycleRate);
-
-				}
-				//check for dev /io op
-				//function: compareString
-				if(compareString(wkgPtrProcess->mdPtr->command,"dev") == STR_EQ)
-				{
-					//add calculated IO time to remain time
-					wkgPtrProcess->time += (
-					                           wkgPtrProcess->mdPtr->intArg2 * configPtr->ioCycleRate);
-
-				}
-				//move wkgptr to the next node
-				wkgPtrProcess->mdPtr = wkgPtrProcess->mdPtr->nextNode;
-			}
-		}
-		//advance the pointer
-		metaPtr = metaPtr->nextNode;
-	}
-
-	//return list
-	return headPtrProcess;
-}
-
-/*
-Name: displayOpCode
-Process: Displays the operation codes based on the configuration
-settings and updates the process state
-Function Input/Parameters: Configuration pointer, Metadata pointer,
-Process pointer, File pointer, Time
-Function Output/Parameters: None
-Function Output/Returned: None
-Device Input/File: None
-Device Output/Device: None
-Dependencies: getOpCode, displayState functions
-*/
-void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process, FILE *file, double *elapsedTime)
-{
-	double operationTime = 0.0;  // Time for each operation
-
-	// Loop through each operation in the metadata for the current process
-	while (compareString(metaData->strArg1, "end") != STR_EQ)
-	{
-		// Determine the type of operation (CPU or I/O)
-		if (compareString(metaData->command, "cpu") == STR_EQ)
-		{
-			// CPU process operation: adjust timing according to CPU cycle rate
-			operationTime = (metaData->intArg2 * configPtr->procCycleRate) / 1000.0;
-
-			// Log CPU process operation start
-			if (configPtr->logToCode != LOGTO_FILE_CODE)
-			{
-				printf("%1.6f, Process: %d, cpu process operation start\n", *elapsedTime, process->pid);
-			}
+			//set process state to ready
+			pcbPtr->process_state = PROCESS_STATE_READY;
 			
-			if (file != NULL)
-			{
-				fprintf(file, "%1.6f, Process: %d, cpu process operation start\n", *elapsedTime, process->pid);
-			}
-		}
-		else if (compareString(metaData->inOutArg, "in") == STR_EQ)
-		{
-			// Input device operation: adjust timing according to IO cycle rate
-			operationTime = (metaData->intArg2 * configPtr->ioCycleRate) / 1000.0;
+			//log state
+			sprintf(simulatorOutput, "%f, OS: Process %d set to RUNNING from READY\n\n", 
+											accessTimer(LAP_TIMER, timeStr), pcbPtr->pid);
+			//call logOutput
+			logOutput( configPtr, simulatorOutput, false );
 
-			// Log input device operation start
-			if (configPtr->logToCode != LOGTO_FILE_CODE)
-			{
-				printf("%1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
+			//create PThread
+			pthread_t *runThread = (pthread_t*)malloc(sizeof(pthread_t));
+			pthread_create(runThread, NULL, simThread, processTimeLeft);
 
-			if (file != NULL)
-			{
-				fprintf(file, "%1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
-		}
-		else if (compareString(metaData->inOutArg, "out") == STR_EQ)
-		{
-			// Output device operation: adjust timing according to IO cycle rate
-			operationTime = (metaData->intArg2 * configPtr->ioCycleRate) / 1000.0;
+			//call run process to run the process to completion
+			runProcess(pcbPtr, configPtr, metaDataMstrPtr );
 
-			// Log output device operation start
-			if (configPtr->logToCode != LOGTO_FILE_CODE)
-			{
-				printf("%1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
+			//when finished, set to terminated ( set output str)
+			sprintf(simulatorOutput, "%f, OS: Process %d set to TERMINATED state from RUNNING state\n\n", 
+						accessTimer(LAP_TIMER, timeStr), pcbPtr->pid);
 			
-			if (file != NULL)
-			{
-				fprintf(file, "%1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
+			//call log output
+			logOutput(configPtr, simulatorOutput, false);
+			pcbPtr->process_state = PROCESS_STATE_TERMINATED;
+
+			//end get value from thread
+			pthread_join(*runThread, NULL);
+
+			//free mem
+			free( runThread );
 		}
 
-		// Update elapsed time for operation duration
-		*elapsedTime += operationTime;
+		//set time left in process
+		*processTimeLeft = pcbPtr->timeLeft;
+		printf("time left: %f\n", pcbPtr->timeLeft );
 
-		// Log end of operation
-		if (compareString(metaData->command, "cpu") == STR_EQ)
-		{
-			if (configPtr->logToCode != LOGTO_FILE_CODE)
-			{
-				printf("%1.6f, Process: %d, cpu process operation end\n", *elapsedTime, process->pid);
-			}
+		//increment to next PCB
+		pcbPtr = pcbPtr->nextPtr;
+		currentPid = scheduleProcess( pcbList, configPtr );
 
-			if (file != NULL)
-			{
-				fprintf(file, "%1.6f, Process: %d, cpu process operation end\n", *elapsedTime, process->pid);
-			}
-		}
-		else if (compareString(metaData->inOutArg, "in") == STR_EQ)
-		{
-			if (configPtr->logToCode != LOGTO_FILE_CODE)
-			{
-				printf("%1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
-
-			if (file != NULL)
-			{
-				fprintf(file, "%1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
-		}
-		else if (compareString(metaData->inOutArg, "out") == STR_EQ)
-		{
-			if (configPtr->logToCode != LOGTO_FILE_CODE)
-			{
-				printf("%1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
-			
-			if (file != NULL)
-			{
-				fprintf(file, "%1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
-		}
-
-		// Move to the next operation in the metadata
-		metaData = metaData->nextNode;
 	}
+	//end queueloop
 
-	// After processing all operations, set the process state to EXIT
-	process->currentState = EXIT_STATE;
+	//return thread val
+	pthread_join(*cpuThread, NULL);
+
+	//free mem
+	free(cpuThread);
+
+	//log output
+	sprintf( simulatorOutput, "%f, OS: System Stop\n", accessTimer(LAP_TIMER, timeStr ));
+	logOutput( configPtr, simulatorOutput, false );
+	sprintf( simulatorOutput, "%f, OS: Simulation End\n", accessTimer(LAP_TIMER, timeStr ));
+	logOutput( configPtr, simulatorOutput, true );
+
+	//deallocate the process list with destroyProcessList
+	destroyProcessList(pcbList);
+
+	//log the output to FILE if required
+	logOutput( configPtr, "", true );
+
+	//free mem
+	free( totalPCBTime );
+	free( processTimeLeft );
+
+}
+
+
+
+/*
+Name: addProcess
+Process: allocates memory for a new pcb, gets data from the new pcb and sets
+				new data to new PCBObj ptr
+Function Input/Parameters: PCBObj
+Function Output/Parameters: none
+Function Output/Returned: new PCBObj with new data
+Device Input/Device: none
+Device Output/Device: none
+Dependencies: malloc, sizeof
+*/
+PCBObj *addProcess(const PCBObj sourcePCB)
+{
+	//declare variables
+	PCBObj *workingNode;
+
+	//malloc size for new obj
+	workingNode = malloc(sizeof(PCBObj));
+
+	//set source data to local ptr
+	workingNode->pid = sourcePCB.pid;
+	workingNode->cpuCycles = sourcePCB.cpuCycles;
+	workingNode->ioCycles = sourcePCB.ioCycles;
+	workingNode->nextOpCode = sourcePCB.nextOpCode;
+	workingNode->process_state = sourcePCB.process_state;
+	workingNode->timeLeft = sourcePCB.timeLeft;
+	workingNode->totalCycles = sourcePCB.totalCycles;
+
+	//set next ptr to null
+	workingNode->nextPtr = NULL;
+
+	//return new node
+	return workingNode;
 }
 
 /*
-Name: displayProcessState
-Process: Displays the current state of the process based on the configuration settings
-Function Input/Parameters: Configuration pointer, Process pointer, Lap time, File pointer
-Function Output/Parameters: None
-Function Output/Returned: None
-Device Input/File: None
-Device Output/Device: None
-Dependencies: None
+Name: createProcessList
+Process: initalizes PCB head pointer 
+Function Input/Parameters: none
+Function Output/Parameters: none
+Function Output/Returned: PCB head ptr
+Device Input/Device: none
+Device Output/Device: none
+Dependencies: malloc, sizeof
 */
-void displayProcessState(ConfigDataType *config, PCB *process, double lapTime, FILE* file)
+PCBLinkedList *createProcessList()
 {
-	// Check logToCode value for monitor
-	if (config->logToCode == LOGTO_MONITOR_CODE || config->logToCode == LOGTO_BOTH_CODE)
-	{
-		// Display process state to monitor
-		displayToMonitor(process, lapTime);
-	}
+	//create new PCB linked list
+	PCBLinkedList *PCBLL;
+	PCBLL = malloc(sizeof(PCBLinkedList));
 
-	// Check logToCode value for file
-	if (config->logToCode == LOGTO_FILE_CODE || config->logToCode == LOGTO_BOTH_CODE)
-	{
-		// Display process state to file
-		displayToFile(process, lapTime, file);
+	//set head ptr to null
+	PCBLL->headPtr = NULL;
+
+	return PCBLL;
 	}
-}
 
 /*
-Name: displayToMonitor
-Process: Displays the current state of the process to the monitor
-Function Input/Parameters: Process pointer, Lap time
-Function Output/Parameters: None
-Function Output/Returned: None
-Device Input/File: None
-Device Output/Device: Monitor
-Dependencies: None
+Name: destroyProcessList
+Process: deallocates memory for PCB linked list
+Function Input/Parameters: head ptr to linked list struct
+Function Output/Parameters: none
+Function Output/Returned: NULL
+Device Input/Device: none
+Device Output/Device: none
+Dependencies: free, destroyProcessListHelper
 */
-void displayToMonitor(PCB *process, double lapTime)
+PCBLinkedList *destroyProcessList(PCBLinkedList *linkedListPtr )
 {
-	//depending on the currentState - monitor
-	switch (process->currentState)
-	{
-	//READY
-	case READY_STATE:
-		//print ready statment
-		//function: printf
-		printf("%1.6f, OS: Process %d set to READY state from NEW state\n", lapTime, process->pid);
-		break;
+	//free the PCBs with helper function
+	destroyProcessListHelper( linkedListPtr->headPtr );
 
-	//RUNNING
-	case RUNNING_STATE:
-		//print runnning statment
-		//function: printf
-		printf("%1.6f, OS: Process %d selected with %d ms remaining\n", lapTime, process->pid, process->time);
-		printf("%1.6f, OS: Process %d set from READY to RUNNING\n\n", lapTime, process->pid);
-		printf("\n");
-		break;
+	//free the LL struct
+	free( linkedListPtr );
 
-	//EXITING
-	case EXIT_STATE:
-		//print exiting statment
-		//function: printf
-		printf("\n");
-		printf("%1.6f, OS: Process %d ended\n", lapTime, process->pid);
-		printf("%1.6f, OS: Process %d set to EXIT\n", lapTime, process->pid);
-		break;
-	//ERROR
-	default:
-		//print error statment
-		//function: printf
-		printf("Error: Invalid process state\n");
-		break;
-	}
+	return NULL;
 }
 
-/*
-Name: displayToFile
-Process: Displays the current state of the process to the file
-Function Input/Parameters: Process pointer, Lap time, File pointer
-Function Output/Parameters: None
-Function Output/Returned: None
-Device Input/File: None
-Device Output/Device: File
-Dependencies: None
-*/
-void displayToFile(PCB *process, double lapTime, FILE* file)
-{
-	//depending on the currentState - file
-	switch (process->currentState)
-	{
-	//READY
-	case READY_STATE:
-		//print ready statment tofile
-		//function: fprintf
-		fprintf(file, "%1.6f, OS: Process %d set to READY state from NEW state\n", lapTime, process->pid);
-		fflush(file);
-		break;
-	//Running
-	case RUNNING_STATE:
-		//print RUNNING statment tofile
-		//function: fprintf
-		fprintf(file, "%1.6f, OS: Process %d selected with %d ms remaining\n", lapTime, process->pid, process->time);
-		fflush(file);
-		fprintf(file, "%1.6f, OS: Process %d set from READY to RUNNING\n\n", lapTime, process->pid);
-		fflush(file);
-		fprintf(file, "\n");
-		fflush(file);
-		break;
-
-	//Exiting
-	case EXIT_STATE:
-		//print EXITING statment to file
-		//function: fprintf
-		fprintf(file, "\n");
-		fprintf(file, "%1.6f, OS: Process %d ended\n", lapTime, process->pid);
-		fflush(file);
-		fprintf(file, "%1.6f, OS: Process %d set to EXIT\n", lapTime, process->pid);
-		fflush(file);
-		break;
-	//ERROR
-	default:
-		//print error statment to file
-		//function: fprintf
-		fprintf(file, "Error: Invalid process state\n");
-		fflush(file);
-		break;
-	}
-}
 
 /*
-Name: getNextProcess
-Process: Retrieves the next process in the linked list of
- processes based on the current process and metadata
-Function Input/Parameters: Current process pointer, Metadata pointer
-Function Output/Parameters: None
-Function Output/Returned: Next process pointer
-Device Input/File: None
-Device Output/Device: None
-Dependencies: None
+Name: destroyProcessListHelper
+Process: recursively deallocates the PCB linked list struct memory
+Function Input/Parameters: head pointer to linked list 
+Function Output/Parameters: none
+Function Output/Returned: NULL
+Device Input/Device: none
+Device Output/Device: none
+Dependencies: free, destroyProcessListHelper(recursively)
 */
-PCB *getNextProcess(PCB *currentProcess,OpCodeType *metaData)
+PCBObj *destroyProcessListHelper(PCBObj *nodePtr)
 {
-	//initialize variables
-	PCB *wrkPtr = currentProcess;
-	OpCodeType *localMeta = metaData;
-
-	//compute data
-	//see if we are at the end of the process
-	if (compareString(
-	            wrkPtr->mdPtr->command, "app")== STR_EQ && compareString(
-	            wrkPtr->mdPtr->strArg1, "end")==STR_EQ)
+	//base case
+	if( nodePtr != NULL)
 	{
-		//if we are then loop through the metadata
-		while (localMeta != NULL)
-		{
-			//check if they are at the same pid as the metadata
-			if (localMeta->pid == wrkPtr->pid)
-			{
-				//if we are at the very beginning of the file
-				if(compareString(localMeta->command, "sys")== STR_EQ)
-				{
-					//move to the next one
-					localMeta = localMeta->nextNode;
-				}
-				//move to the next one
-				wrkPtr->mdPtr = localMeta;
-				//return the wrkptr
-				return wrkPtr;
-			}
-			//move to the next MetaData
-			localMeta = localMeta->nextNode;
-		}
+		nodePtr->nextPtr = destroyProcessListHelper( nodePtr->nextPtr );
 	}
-	//return NULL if we are not at the end
+	//else at the end of the linked list
+	free( nodePtr );
+
+	//return 
 	return NULL;
 }
 
 /*
-Name: printTitle
-Process: Prints the title and the start time of the
-simulation based on the configuration settings
-Function Input/Parameters: Configuration pointer,
-File pointer, Time
-Function Output/Parameters: None
-Function Output/Returned: None
-Device Input/File: None
-Device Output/Device: None
-Dependencies: None
+Name: fillProcessList
+Process: iterates through the metadata LL, fills out each process as needed.
+Function Input/Parameters: metadata (OpCodeType *),
+					   headPointer (ProcessControlBlockLL *)
+Function Output/Parameters: none
+Function Output/Returned: pointer to filled PCB (ProcessControlBlockLL *)
+Device Input/Device: none
+Device Output/Device: none
+Dependencies: ???
 */
-void printTitle(ConfigDataType *config, FILE* fileName, double time)
+PCBLinkedList *fillProcessList(ConfigDataType *configPtr, OpCodeType *metadataPtr, PCBLinkedList *headPointer)
 {
-	if (config->logToCode==LOGTO_MONITOR_CODE)
+	//declare variables
+	OpCodeType *wkgMetaDataPtr;
+	OpCodeType *wkgInstPtr;
+	PCBObj currentPCB;
+	PCBObj *wkgPCBPtr;
+
+	int ioCycleCount = 0;
+	int cpuCycleCount = 0;
+	double timeLeft = 0.0;
+	int processID = 0;
+	char *cmd, *arg;// *inOutArg;
+
+
+	//set wkg ptr to first metaData pointer
+	wkgMetaDataPtr = metadataPtr;
+	wkgInstPtr = metadataPtr;
+
+	//set other wkg ptr to first part of PCB
+	wkgPCBPtr = headPointer->headPtr;
+
+	//get first cmd and argument
+	cmd = wkgMetaDataPtr->command;
+	arg = wkgMetaDataPtr->strArg1;
+	//inOutArg = wkgMetaDataPtr->inOutArg;
+
+	//loop through process list until sys end
+	while( wkgMetaDataPtr != NULL && !( compareStrings( arg, "end") == STR_EQ && 
+										compareStrings( cmd, "sys") == STR_EQ ))
 	{
-		//display title
-		//print title
-		//function: printf
-		printf("Simulator Run\n");
-		printf("-------------\n\n");
+		currentPCB.nextOpCode = wkgInstPtr->nextNode;
 
-		//display TIME, OS: Simulator start
-		//function: printf
-		printf("%1.6f, OS: Simulator start\n", time);
+		//if app start
+		if( compareStrings( cmd, "app" ) && compareStrings( arg, "start" ) )
+		{
+			//set ID for PCB and metadata
+			wkgMetaDataPtr->pid = processID;
+			currentPCB.pid = processID;
 
+			//set process state
+			currentPCB.process_state = PROCESS_STATE_NEW;
+		}
+
+		//printf("inside fileProcessList\n");
+		//printf("cmd is: %s.  arg is: %s\n\n", cmd, arg);
+		//count num of io cycles
+		if( compareStrings( cmd, "dev" ) == STR_EQ)
+		{
+			//set ioCycleCount and time remaining
+			ioCycleCount = ioCycleCount + wkgMetaDataPtr->intArg2;
+
+		}
+
+		//count cpu cycles
+		if( compareStrings( arg, "process" ) == STR_EQ && 
+			compareStrings( cmd, "cpu" ) == STR_EQ)
+		{
+			cpuCycleCount = cpuCycleCount + wkgMetaDataPtr->intArg2;;
+		}
+		if( compareStrings( arg, "end") == STR_EQ &&
+			compareStrings(cmd, "app") == STR_EQ)
+		{
+			//set cycle count variables
+			currentPCB.ioCycles = ioCycleCount;
+			currentPCB.cpuCycles = cpuCycleCount;
+			currentPCB.totalCycles = ioCycleCount + cpuCycleCount;
+
+			//set current pcb starting instruction
+			wkgInstPtr = wkgMetaDataPtr;
+
+			//set the time remaining
+			timeLeft = ( ioCycleCount * configPtr->ioCycleRate ) +
+						( cpuCycleCount * configPtr->procCycleRate );
+
+			//increment PID ctr
+			processID = processID + 1;
+
+			//set PID variables
+			currentPCB.timeLeft = timeLeft;
+
+			//reset variables
+			ioCycleCount = 0;
+			cpuCycleCount = 0;
+			timeLeft = 0;
+
+			//add nodes to the end of all data, for both metadata and pcbs
+			if(headPointer->headPtr == NULL)
+			{
+				//set data
+				headPointer->headPtr = addProcess( currentPCB );
+
+				//increment headPtr to next
+				wkgPCBPtr = headPointer->headPtr;
+			}
+			else
+			{
+				//set data
+				wkgPCBPtr->nextPtr = addProcess(currentPCB);
+
+				//increment next ptr
+				wkgPCBPtr = wkgPCBPtr->nextPtr;
+			}
+		}
+		//set new data
+		wkgMetaDataPtr = wkgMetaDataPtr->nextNode;
+		cmd = wkgMetaDataPtr->command;
+		arg = wkgMetaDataPtr->strArg1;
+		//inOutArg = wkgMetaDataPtr->inOutArg;
 	}
-	else if (config->logToCode==LOGTO_FILE_CODE)
+
+	//return new head ptr
+	return headPointer;
+
+}
+
+/*
+Name: logOutput
+Process: Takes a string and outputs it to monitor AND/OR file
+Function Input/Parameters: string (char *), file pointer (FILE *), 
+						   configuration data (ConfigDataType *),
+						   end of simulator (bool)
+Function Output/Parameters: none
+Function Output/Returned: none
+Device Input/Device: none
+Device Output/Device: none
+Dependencies: sprintf
+*/
+void logOutput(ConfigDataType *configPtr, char *logStr, bool isEnd)
+{
+
+	//create file ptr
+	FILE *outputFilePtr = NULL;
+
+	//log to both
+	if( configPtr->logToCode == LOGTO_BOTH_CODE )
 	{
-		//display title
-		//print title
-		//function: printf
-		fprintf(fileName, "Simulator Run\n");
-		fprintf(fileName, "-------------\n\n");
-		//display TIME, OS: Simulator start
-		//function: printf
-		fprintf(fileName,"%1.6f, OS: Simulator start\n", time);
+		//open the output file with mode "append" (a+)
+		outputFilePtr = fopen(configPtr->logToFileName, "a+" );
+		if( outputFilePtr != NULL )
+		{
+			//write to file
+			fprintf(outputFilePtr, "%s", logStr );
+
+			//print to screen
+			fprintf(stdout, "%s", logStr);
+		}
+		else
+		{
+			fprintf(stderr, "Err: could not open file %s for logging.\n", 
+													configPtr->logToFileName );
+		}
+		//if at end
+		if( isEnd )
+		{
+			//close file ptr
+			fclose( outputFilePtr );
+		}
 	}
-	else if (config->logToCode== LOGTO_BOTH_CODE)
+	//log to file only
+	else if( configPtr->logToCode == LOGTO_FILE_CODE )
 	{
-		//display title
-		//print title
-		//function: printf
-		printf("Simulator Run\n");
-		printf("-------------\n\n");
-		//display TIME, OS: Simulator start
-		//function: printf
-		printf("%1.6f, OS: Simulator start\n", time);
+		//log output to file only
+		printf("\nSim will create output file\n");
 
-		//display title
-		//print title
-		//function: printf
-		fprintf(fileName, "Simulator Run\n");
-		fprintf(fileName, "-------------\n\n");
-		//display TIME, OS: Simulator start
-		//function: printf
-		fprintf(fileName,"%1.6f, OS: Simulator start\n", time);
-
+		//open the output file with mode "append" (a+)
+		outputFilePtr = fopen(configPtr->logToFileName, "a+" );
+		if( outputFilePtr != NULL )
+		{
+			//add logStr to the file
+			fprintf( outputFilePtr, "%s", logStr );
+		}
+		else
+		{
+			fprintf(stderr, "Error: could not open file %s for logging.\n", 
+													configPtr->logToFileName );
+		}
+		//if at end
+		if( isEnd )
+		{
+			fopen(configPtr->logToFileName, "w+");
+			//close file ptr
+			fclose( outputFilePtr );
+		}
 	}
+	//log to screen only
+	else if ( configPtr->logToCode == LOGTO_MONITOR_CODE )
+	{
+		fprintf(stdout, "%s", logStr );
+	}
+
+}
+
+/*
+Name: runCPU
+Process: runs the CPU operations until complete
+Function Input/Parameters: command, argument(s) configData, PID
+Function Output/Parameters: none
+Function Output/Returned: none
+Device Input/Device: none
+Device Output/Device: none
+Dependencies: ???
+*/
+void runCPU(char *cmd, char *arg, int intArg2, ConfigDataType *configPtr, int PID)
+{
+	//create variables
+	char timeStr[MAX_STR_LEN];
+	char CPUOutput[MAX_STR_LEN];
+	int CPUTime = intArg2 * (configPtr->procCycleRate);
+	int *CPUTimePtr = malloc(sizeof(int));
+	*CPUTimePtr = CPUTime;
+
+	sprintf(CPUOutput, "%f, Process: %d, %s %s operation start\n", 
+						accessTimer(LAP_TIMER, timeStr ), PID, cmd, arg );
+	logOutput( configPtr, CPUOutput, false );
+	
+	//printf("CPU Time is: %dms\n", *CPUTimePtr);
+
+	//run timer for intArg * procCycleRate
+	//create thread
+	pthread_t *cpuThread = (pthread_t *)malloc(sizeof(pthread_t *));
+	//run thread
+	pthread_create(cpuThread, NULL, simThread, (void *)CPUTimePtr);
+
+	//return value from thread
+	pthread_join(*cpuThread, NULL);
+
+	//create output str
+	sprintf(CPUOutput, "%f, Process: %d, %s %s operation end\n", 
+							accessTimer(LAP_TIMER, timeStr), PID, cmd, arg);
+	//log output
+	logOutput(configPtr, CPUOutput, false);
+
+	//free pointer mem
+	free(CPUTimePtr);
+
+	//free mem
+	free( cpuThread );
+
+}
+
+/*
+Name: runIO
+Process: runs the IO operations for however long it takes
+Function Input/Parameters: command, argument(s), configData, PID
+Function Output/Parameters: none
+Function Output/Returned: none
+Device Input/Device: none
+Device Output/Device: none
+Dependencies: ???
+*/
+void runIO(char *cmd, char *arg, int intArg2, 
+								ConfigDataType *configPtr, int PID)
+{
+	char timeStr[MAX_STR_LEN];
+	char ioOutput[MAX_STR_LEN];
+	int ioTime = intArg2 * (configPtr->ioCycleRate);
+	int *ioTimePtr = malloc( sizeof( int ));
+	*ioTimePtr = ioTime;
+	
+	//printf("ioCycleRate is: %d\n", configPtr->ioCycleRate );
+	//printf("intArg2 is: %d\n", intArg2 );
+	//printf("I/0 Time is: %dms\n", *ioTimePtr);
+
+	//create output
+	sprintf(ioOutput, "%f, Process: %d, %s %s operation start\n", 
+			accessTimer(LAP_TIMER, timeStr), PID, cmd, arg);
+	//log output
+	logOutput(configPtr, ioOutput, false);
+
+	//create/use thread
+	pthread_t *ioThread = (pthread_t *)malloc(sizeof(pthread_t *));
+	pthread_create(ioThread, NULL, simThread, (void *)ioTimePtr);
+
+	//return thread value
+	pthread_join(*ioThread, NULL);
+
+	//create and log output
+	sprintf(ioOutput, "%f, Process: %d, %s %s operation end\n", 
+				accessTimer(LAP_TIMER, timeStr), PID, cmd, arg);
+	logOutput(configPtr, ioOutput, false);
+
+	//free mem
+	free( ioThread );
+	free( ioTimePtr );
+}
+
+/*
+Name: runProcess
+Process: runs the selected
+Function Input/Parameters: ???
+Function Output/Parameters: none
+Function Output/Returned: none
+Device Input/Device: none
+Device Output/Device: none
+Dependencies: accessTimer, compareString, runCPU, runIO
+*/
+void runProcess(PCBObj *singlePCB, ConfigDataType *configPtr, OpCodeType *metaDataPtr)
+{
+	//"execute" the entire process, running the CPU when a CPU cycle comes up
+	//or a run IO when an IO cycle comes up
+	//char timeStr[ MAX_STR_LEN ];
+
+	char *command;
+	char *argument;
+	//char *inOutArg;
+	command = metaDataPtr->command;
+	argument = metaDataPtr->strArg1;
+	//char *inOutArg = workingMeta->inOutArg;
+
+	//inOutArg = workingMeta->inOutArg;
+	while (!( compareStrings( command, "app" ) == STR_EQ && 
+			compareStrings( argument, "end" ) == STR_EQ) && 
+			!( compareStrings( command, "sys" ) == STR_EQ && 
+			compareStrings( argument, "end" ) == STR_EQ ) )
+	{
+		//debugging
+		//printf("inOutArg is: %s\n", inOutArg );
+		//printf("command is: %s\n", command);
+		//printf("argument is: %s\n", argument );
+
+		// check to see what operation will be performed
+		if (compareStrings( command, "cpu" ) == STR_EQ && 
+		compareStrings( argument, "process" ) == STR_EQ)
+		{
+			//printf("\ncalling runCPU\n");
+			//printf("arg2 from OpCodeType ptr is: %d\n", metaDataPtr->intArg2);
+
+			// run the CPU for the required amount of time.
+			runCPU( metaDataPtr->command, metaDataPtr->strArg1, 
+						metaDataPtr->intArg2, configPtr, singlePCB->pid );
+		}
+		if( compareStrings( command, "devin" ) == STR_EQ || 
+		compareStrings( command, "dev out" )  )
+		{
+			//printf("\n\ncalling runIO\n");
+			//printf("arg2 from OpCodeType ptr is: %d\n", metaDataPtr->intArg2);
+
+			// run IO operations for the required amount of time.
+			runIO( metaDataPtr->command, metaDataPtr->strArg1, 
+						metaDataPtr->intArg2, configPtr, singlePCB->pid );
+		}
+		metaDataPtr = metaDataPtr->nextNode;
+		command = metaDataPtr->command;
+		argument = metaDataPtr->strArg1;
+		//inOutArg = workingMeta->inOutArg;
+	}
+}
+
+/*
+Name: scheduleProcess
+Process: takes scheduling data, returns which process to run
+Function Input/Parameters: head pointer of PCB List 
+Function Output/Parameters: none
+Function Output/Returned: none
+Device Input/Device: none
+Device Output/Device: none
+Dependencies: accessTimer, sprintf
+*/
+int scheduleProcess(PCBLinkedList *headPointer, ConfigDataType *configPtr)
+{
+
+	PCBObj *wkgPtr;
+	int returnPid = -1;
+	wkgPtr = headPointer->headPtr;
+	char loggingStr[MAX_STR_LEN];
+	char timeStr[MAX_STR_LEN];
+
+	// switch case for each scheduling algorithm
+	switch (configPtr->cpuSchedCode)
+	{
+		case CPU_SCHED_FCFS_N_CODE:
+			//First Come, First Served, Non-preemptive Scheduling
+			//returns first process without fail.
+			//need to find whichever process is first, AND the state is NEW.
+			//will set the state to READY, return the pid of the process which
+				// was set to ready.
+			
+			// set every process in the list to READY from NEW
+			while(wkgPtr != NULL)
+			{
+				//
+				if(wkgPtr->process_state != PROCESS_STATE_READY && 
+						wkgPtr->process_state != PROCESS_STATE_TERMINATED)
+				{
+					// set the process within the PCB to the ready state, 
+					//report in ready state.
+					wkgPtr->process_state = PROCESS_STATE_READY;
+
+					//debugging
+					//printf("Process %d set to READY from NEW\n", wkgPtr->pid);
+					sprintf(loggingStr, "%f, OS: Process %d set to READY state from NEW state\n", 
+											accessTimer(LAP_TIMER, timeStr), wkgPtr->pid);
+					//log output
+					logOutput(configPtr, loggingStr, false);
+				}
+				// move to the next pointer
+				wkgPtr = wkgPtr->nextPtr;
+			}
+
+			// reset the pointer to get ready for selection of process
+			wkgPtr = headPointer->headPtr;
+			while(wkgPtr != NULL && (returnPid == -1))
+			{
+				// check if the process is NOT terminated
+				if (wkgPtr->process_state == PROCESS_STATE_READY)
+				{
+					//printf("Process %d Selected with %.0f ms remaining\n", wkgPtr->pid, wkgPtr->timeLeft);
+					sprintf(loggingStr, "%f, OS: Process %d selected with %.0f ms remaining\n", 
+									accessTimer(LAP_TIMER, timeStr), wkgPtr->pid, wkgPtr->timeLeft);
+					//log output
+					logOutput(configPtr, loggingStr, false);
+					returnPid = wkgPtr->pid;
+				}
+				// move to next pointer
+				wkgPtr = wkgPtr->nextPtr;
+			}
+			break;
+		case CPU_SCHED_FCFS_P_CODE:
+			// TODO: First Come, First Served, Preemptive Scheduling
+			printf("FCFS not implemented yet\n");
+			break;
+
+		case CPU_SCHED_RR_P_CODE:
+			// TODO: Round Robin Scheduling
+			printf("Round Robin not implemented yet\n");
+			break;
+
+		case CPU_SCHED_SJF_N_CODE:
+			// TODO: Shortest Job First Scheduling
+			printf("SJF not implemented yet\n");
+			break;
+
+		case CPU_SCHED_SRTF_P_CODE:
+			// TODO: Shortest Run-time First Scheduling
+			printf("SRTF not implemented yet\n");
+			break;
+	}
+	// return returnPid
+	return returnPid;
+}
+
+/*
+Name: simThread
+Process: wrapper functions for threading in the simulator
+Function Input/Parameters: milliseconds (int)
+Function Output/Parameters: none
+Function Output/Returned: none
+Device Input/Device: none
+Device Output/Device: none
+Dependencies: ???
+*/
+void *simThread(void *milSec)
+{
+	//initalize variables
+	int cycleTime = *( int *)milSec;
+
+	//"wait" for operation to complete in a thread
+	//printf("simulating operation with: %dms\n", cycleTime);
+	runTimer(cycleTime);
+	pthread_exit(NULL);
+
 }
