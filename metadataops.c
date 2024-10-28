@@ -1,690 +1,851 @@
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "StringUtils.h"
-#include "MetaDataOps.h"
-#include "DataTypes.h"
+// header files
+#include "metadataops.h"
 
 
 /*
-addNode
-adds metadata node to linked list recursively, handles empty condition
-output param: none
-output returned: pointer to prev node or head node (OpCodeType* )
-dependencies: malloc, copyString
+Name: addNode
+Process: adds metadata node to linked list recursively,
+         handles empty list condition
+Function Input/Parameters: pointer to head or next linked node (OpCodeType *)
+                           pointer to new node (OpCodeType *)
+Function Output/Parameters: none
+Function Output/Returned: pointer to previous node, or head node (OpCodeType *)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: malloc, copyString
 */
 OpCodeType *addNode( OpCodeType *localPtr, OpCodeType *newNode )
 {
-	//check for local ptr assinged to null
-	if(localPtr == NULL )
-	{
-		//access memory for new link/node
-		localPtr = (OpCodeType *)malloc(sizeof(OpCodeType) );
+    // check for local pointer assigned to NULL
+    if( localPtr == NULL )
+    {
+       // access memory for new link/node
+          // function: malloc
+       localPtr = (OpCodeType *)malloc( sizeof( OpCodeType ) );
 
-		//assign all 3 values to newly created node
-		//assign next ptr to null
-		localPtr->pid = newNode->pid;
-		copyString(localPtr->command, newNode->command);
-		copyString(localPtr->inOutArg, newNode->inOutArg);
-		copyString(localPtr->strArg1, newNode->strArg1);
-		localPtr->intArg2 = newNode->intArg2;
-		localPtr->intArg3 = newNode->intArg3;
-		localPtr->opEndTime = newNode->opEndTime;
-		localPtr->nextNode = NULL;
-		//return current local ptr
-		return localPtr;
-	}
-	//assume end of list not found yet
-	//assign recursive function to current's next link
-		//addNode
-	localPtr->nextNode = addNode(localPtr->nextNode, newNode);
-	return localPtr;
+       // assign all three values to newly created node
+       // assign next pointer to null
+          // function: copyString
+       localPtr->pid = newNode->pid;
+       copyString( localPtr->command, newNode->command );
+       copyString( localPtr->inOutArg, newNode->inOutArg );
+       copyString( localPtr->strArg1, newNode->strArg1 );
+       localPtr->intArg2 = newNode->intArg2;
+       localPtr->intArg3 = newNode->intArg3;
+       localPtr->opEndTime = newNode->opEndTime;
+
+       localPtr->nextNode = NULL;
+
+       // return current local pointer
+       return localPtr;
+    }  
+
+
+    // assume end of list not found yet
+    // assign recursive function to current's next link
+       // function: addNode
+    localPtr->nextNode = addNode( localPtr->nextNode, newNode );
+
+    // return current local pointer
+    return localPtr;
 }
 
 /*
-clearMetaDataList
-recursively traverses list, frees dynamically allocated nodes
-function output parameters: none
-Output returned: NULL (OpCodeType *)
-Dependencies: clearMetaDataList, free
+Name: clearMetaData
+Process: recursively traverses list, frees dynamically allocated nodes
+Function Input/Parameters: node op code (const OpCodeType *)
+Function Output/Parameters: none
+Function Output/Returned: NULL (OpCodeType *)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: tbd
 */
 OpCodeType *clearMetaDataList( OpCodeType *localPtr )
 {
-	//initalize function/vars
+    // check for local pointer not set to null (list not empty)
+    if( localPtr != NULL )
+    {
+        // call recursive function with next pointer
+          // function: clearMetaDataList
+        clearMetaDataList( localPtr->nextNode );
 
-	//check for local ptr not set to null
-	if( localPtr != NULL)
-	{
-		//call recursive function to next pointer
-		clearMetaDataList( localPtr->nextNode );
+       // after recursive call, release memory to OS
+          // function: free
+       free( localPtr );
 
-		//release memory
-		free(localPtr);
+       // set given pointer to NULL
+       localPtr = NULL;
+    }
 
-		//set given ptr to null
-		localPtr = NULL;
-	}
-	//return null
-	return NULL;
+    // return null to calling function
+    return NULL;
 }
 
 /*
-displayMetaData
-data dump/display of all op code itmes
-output parameters: none
-output returned: none
-Dependencies: tbd
+Name: displayMetaData
+Process: data dump/display of all op code items
+Function Input/Parameters: pointer to head of 
+                           op code/metadata list (const OpCodeType *)
+Function Output/Parameters: none
+Function Output/Returned: none
+Device Input/Keyboard: none
+Device Output/Monitor: displayed as specified
+Dependencies: printf, compareString
 */
 void displayMetaData( const OpCodeType *localPtr )
 {
-	//initalize function/vars
+    // display title, with underline
+       // function: printf
+    printf( "Meta-Data File Display\n" );
+    printf("-----------------------\n\n");
 
-	//display title with underline
-	printf("Meta-Data File Display\n" );
-	printf( "----------------------\n\n");
-	//loop to end of linked list
-	while (localPtr != NULL)
-	{
-		//print leader
-		printf("OpCode: ");
+    // loop to end of linked list
+    while( localPtr != NULL )
+    {
+       // print leader
+          // function: printf
+       printf( "Op Code: " );
 
-		//print op code pid
-		printf("/pid: %d", localPtr->pid );
+       // print op code pid
+          // function: printf
+       printf( "/pid: %d", localPtr->pid );
 
-		//print op code command
-		printf("/cmd: %s", localPtr->command);
+       // print op code command
+          // function: printf
+       printf( "/cmd: %s", localPtr->command );
 
-		//check for dev op
-		if( compareStrings( localPtr->command, "dev" ) == STR_EQ )
-		{
-			//print in/out paremeter
-			printf("/io: %s", localPtr->inOutArg);
-		}
-		//otherwise assume other than dev
-		else
-		{
-			//print NA
-			printf("/io: NA");
-		}
-		//print first string arg
-		printf("\n\t /arg1: %s", localPtr->strArg1 );
+       // check for dev op
+       if( compareString( localPtr->command, "dev" ) == STR_EQ )
+       {
+          // print in/out parameter
+             // function: printf
+          printf( "/io: %s", localPtr->inOutArg );
+       }
 
-		//print first int arg
-		printf("/arg 2: %d", localPtr->intArg2);
 
-		//print second int arg if exists
-		printf("/arg3: %d", localPtr->intArg3);
+       // otherwise, assume other than dev
+       else
+       {
+          // print NA
+             // function: printf
+          printf( "/io: NA" );
+       }
 
-		//print op end time (open)
-		printf( "/op end time %8.6f", localPtr->opEndTime );
+       // print first string argument
+          // function: printf
+       printf( "\n\t /arg1: %s", localPtr->strArg1 );
 
-		//end line
-		printf("\n\n");
+       // print first int argument
+          // function: printf
+       printf( "/arg 2: %d", localPtr->intArg2 );
 
-		//assign local ptr to next node
-		localPtr = localPtr->nextNode;
-	}
+       // print second int argument
+          // function: printf
+       printf( "/arg 3: %d", localPtr->intArg3 );
+
+       // print op end time
+          // function: printf
+       printf( "/op end time: %8.6f", localPtr->opEndTime );
+
+       // end line
+          // function: printf
+       printf( "\n\n" );
+    
+
+       // assign local pointer to next node
+       localPtr = localPtr->nextNode;
+    }
 }
 
 /*
-getCommand
-parses 3 letter command part of op code string
-output param: parsed command (char*)
-output returned: updated start index for use by calling function (int)
-dependencies: none
+Name: getCommand
+Process: parses three letter command part of op code string
+Function Input/Parameters: input op code string (const char *),
+                           starting index (int)
+Function Output/Parameters: parsed command (char *)
+Function Output/Returned: updated starting index for use
+                          by calling function (int)
+Device Input/File: none
+Device Output/Device: none
+Dependencies: none
 */
-int getCommand(char *cmd, const char *inputStr, int index )
+int getCommand( char *cmd, const char *inputStr, int index )
 {
-	//initalize function/vars
-	int lengthOfCommand = 3;
+    // intialize variables
+    int lengthOfCommand = 3;
 
-	//loop across cmd length
-	while( index < lengthOfCommand )
-	{
-		//assign char from input string to buffer str
-		cmd[index] = inputStr[ index ];
+    // loop across command length
+    while( index < lengthOfCommand )
+    {
+       // assign character fron input string to buffer string
+       cmd[ index ] = inputStr[ index ];
 
-		//inc index
-		index++;
+       // increment index
+       index++;
 
-		//set next char to NUll char
-		cmd[index] = NULL_CHAR;
-	}
-	//return current index
-	return index;
+       // set next charcter to null character
+       cmd[ index ] = NULL_CHAR;
+    }
+
+    // return current index
+    return index;
 }
 
 /*
-getMetaData
-main driver function to upload, parse, and store list of 
-		op code commands in a linked list
-
-output parameters: pointer to op code linked list head ptr (OpCodeType **),
-							result message of function state
-							after completion (char *)
-output returned: boolean result of operation (bool)
-device input/file: op code list uploaded
-dependencies: copyString, fopen, getStringToDelimiter, compareString, fclose,
-				malloc, getOpCommand, updateStartcount, updateEndCount,
-				clearMetaDataList, free, addNode
+Name: getMetaData
+Process: main driver function to upload, parse, and store list
+         of op code commands in a linked list
+Function Input/Parameters: file name (const char *)
+Function Output/Parameters: pointer to op code linked list
+                            head pointer (OpCodeType **),
+                            result message of function state 
+                            after completion (char *)
+Function Output/Returned: Boolean result of operation (bool)
+Device Input/File: op code list uploaded
+Device Output/Device: none
+Dependencies: copyString, fopen, getStringToDelimiter, compareString, fclose,
+              malloc, getOpCommand, updateStartCount, updateEndCount,
+              clearMetaDataList, free, addNode
 */
-bool getMetaData( const char *fileName, OpCodeType **opCodeDataHead,
-										char *endStateMsg)
+bool getMetaData( const char *fileName, 
+                               OpCodeType **opCodeDataHead, char *endStateMsg )
 {
-	//read only constants
-	const char READ_ONLY_FLAG[] = "r";
+    // intialize function/variables
+       
+       // initialize read only constant
+       const char READ_ONLY_FLAG[] = "r";
 
-	//initalize vars
-	int accessResult, startCount = 0, endCount = 0;
-	char dataBuffer [ MAX_STR_LEN ];
-	bool returnState = true;
-	OpCodeType *newNodePtr;
-	OpCodeType *localHeadPtr = NULL;
-	FILE *fileAccessPtr;
+       // intialize variables
+       int accessResult, startCount = 0, endCount = 0;
+       char dataBuffer[ MAX_STR_LEN ];
+       bool returnState = true;
+       OpCodeType *newNodePtr;
+       OpCodeType *localHeadPtr = NULL;
+       FILE *fileAccessPtr;
 
-	//initalize op code data ptr inc ase of return error
-	*opCodeDataHead = NULL;
+    // intialize op code data pointer in case of return error
+    *opCodeDataHead = NULL;
 
-	//initalize end state message
-	copyString( endStateMsg, "Metadata File upload successful" );
+    // intialize end state message
+       // function: copyString
+    copyString( endStateMsg, "Metadata file upload successful" );
 
-	//open file
-	fileAccessPtr = fopen( fileName, READ_ONLY_FLAG );
+    // open file for reading 
+       // function: fopen
+    fileAccessPtr = fopen( fileName, READ_ONLY_FLAG );
 
-	//check for file open failure
-	if( fileAccessPtr == NULL )
-	{
-		//set end state message
-		copyString( endStateMsg, "Metadata file access error" );
+    // check for file open failure
+    if( fileAccessPtr == NULL )
+    {
+      // set end state message
+          // function: copyString
+      copyString( endStateMsg, "Metadata file access error" );
 
-		//return file access error
-		return false;
-	}
-	//check first line for correct leader
-		//function: getStringToDelimiter, compareString
-	if( !getStringToDelimiter( fileAccessPtr, COLON, dataBuffer ) ||
-		compareStrings( dataBuffer, "Start Program Meta-Data Code") != STR_EQ ) 
-	{
-		//close file
-		fclose( fileAccessPtr );
+       // return file access error
+       return false;
+    }
 
-		//set end state message
-		copyString(endStateMsg, "Corrupt metadata leader line error" );
+       
+    // check first line for correct leader
+       // function: getStringToDelimiter, compareString
+    if( !getStringToDelimeter( fileAccessPtr, COLON, dataBuffer )
+            || compareString( dataBuffer, 
+                      "Start Program Meta-Data Code" ) != STR_EQ )
+    {
 
-		//return corrupt descriptor error
-		return false;
-	}
-	//allocate memory for temp data struct
-		//malloc
-	newNodePtr = (OpCodeType *) malloc( sizeof( OpCodeType ) );
+       // close file
+          // function: fclose
+       fclose( fileAccessPtr );
 
-	//get fist op command
-		//function getOpcommnand
-	accessResult = getOpCommand(fileAccessPtr, newNodePtr);
+       // set end state message
+          // function: copyString
+       copyString( endStateMsg, "Corrupt metadata leader line error" );
 
-	//get start and end counts for later comparison
-		//function? updateStartCount, UpdateEndCount
-	startCount = updateStartCount( startCount, newNodePtr->strArg1 );
-	endCount = updateEndCount( endCount, newNodePtr->strArg1 );
+       // return corrupt descriptor error
+       return false;
+    }
 
-	//debugging
-	//printf("accessResult is:%d", accessResult );
+    // allocate memory fr the temp data structure
+       // function: malloc
+    newNodePtr = (OpCodeType *)malloc( sizeof( OpCodeType ) );
 
-	//check for failure of first complet op code
-	if( accessResult != COMPLETE_OPCMD_FOUND_MSG )
-	{
-		//close file
-		fclose( fileAccessPtr );
+    // get the first op command
+       // function: getOpCommand
+    accessResult = getOpCommand( fileAccessPtr, newNodePtr );
 
-		//clear data from struct list
-			//clearMetadataList
-		*opCodeDataHead = clearMetaDataList( localHeadPtr );
+    // get start and end counts for later comparison
+       // function: updateStartCount, updateEndCount
+    startCount = updateStartCount( startCount, newNodePtr->strArg1 );
+    endCount = updateEndCount( endCount, newNodePtr->strArg1 );
 
-		//free temp struct memeory
-		free( newNodePtr );
+    // check for failure of first complete op command
+    if( accessResult != COMPLETE_OPCMD_FOUND_MSG )
+    {
+       // close file
+          // function: fclose
+       fclose( fileAccessPtr );
 
-		//set end state message
-		copyString( endStateMsg, "Metadata incomplete first op command found");
+       // clear data from the structure list
+          // function: clearMetaDataList
+       *opCodeDataHead = clearMetaDataList( localHeadPtr );
 
-		return false;
-	}
-	//loop across all remaining op commands
-		//while complete cop commands are found
-	while( accessResult == COMPLETE_OPCMD_FOUND_MSG )
-	{
+       // free temporary structure memory
+          // function: free
+       free( newNodePtr );
 
-		//add the new op command to linked list
-			//addNode
-		localHeadPtr = addNode( localHeadPtr, newNodePtr );
+       // set end state message
+          // function: copyString
+       copyString( endStateMsg, "Metadata incomplete first op command found" );
 
-		//get a new op command
-			//getOpCommand
-		accessResult = getOpCommand( fileAccessPtr, newNodePtr );
+       // return result of operation
+       return false;
+    }
 
-		//update start and end counts for later comparison
-			//updateStartCount, updateEndCount
-		startCount = updateStartCount( startCount, newNodePtr->strArg1 );
-		endCount = updateEndCount( endCount, newNodePtr->strArg1 );
-	}
-	//after loop, check for last op command
-	if( accessResult == LAST_OPCMD_FOUND_MSG )
-	{
-		//check for start and end op code counts equal
-		if( startCount == endCount )
-		{
-			//add the last node to the linked list
-				//addNode
-			localHeadPtr = addNode(localHeadPtr, newNodePtr );
+    // loop across all remaining op commands
+    //   (while complete op command are found)
+    while( accessResult == COMPLETE_OPCMD_FOUND_MSG )
+    {
+       // add the new op command to the linked list
+          // function: addNode
+       localHeadPtr = addNode( localHeadPtr, newNodePtr );
 
-			//set access result to no error for later op
-			accessResult = NO_ACCESS_ERR;
+       // get a new op command
+          // function: getOpCommmand
+       accessResult = getOpCommand( fileAccessPtr, newNodePtr );
 
-			//check last line for incorect descriptor
-				//getStringToDelimiter, compareString
-			if( !getStringToDelimiter( fileAccessPtr, PERIOD, dataBuffer) ||
-				compareStrings(dataBuffer, "End Program Meta-Data Code" ) != STR_EQ)
-			{
+       // update start and end counts for later comparison
+          // function: updateStartCount, updateEndCount
+       startCount = updateStartCount( startCount, newNodePtr->strArg1 );
+       endCount = updateEndCount( endCount, newNodePtr->strArg1 );
+    }
 
-				//set access result to corrupted descriptor error
-				accessResult = MD_CORRUPT_DESCRIPTOR_ERR;
+    // after loop completion, check for last op command found
+    if( accessResult == LAST_OPCMD_FOUND_MSG )
+    {
+       // check for start and end up code counts equal
+       if( startCount == endCount )
+       {
+          // add the last node to the linked list
+             // function: addNode
+          localHeadPtr = addNode( localHeadPtr, newNodePtr );
 
-				//set end state message
-				copyString( endStateMsg, "Metadata corrupted descriptor error");
-			}
-		}
-	
-		//assume start/end counts not equal
-		else
-		{
-			//close file
-			fclose( fileAccessPtr );
+          // set access result to no error for later operation
+          accessResult = NO_ACCESS_ERR;
 
-			//clear data
-			*opCodeDataHead = clearMetaDataList( localHeadPtr );
+          // check last line for incorrect end descriptor
+             // function: getStringToDelimiter, compareString
+          if( !getStringToDelimeter( fileAccessPtr, PERIOD, dataBuffer )
+              || compareString( dataBuffer, "End Program Meta-Data Code" ) 
+                                                                   != STR_EQ )
+          {
+             // set access result to corrupted descriptor error
+             accessResult = MD_CORRPUT_DESCRIPTOR_ERR;
 
-			//free memeory
-			free( newNodePtr );
+             // set end state message
+                // function: copyString
+             copyString( endStateMsg, "Metadata corrupted descriptor error" );
+          }
+       }
+    
 
-			//set access result to error
-			accessResult = UNBALANCED_START_END_ERR;
+       // otherwise, assume start/end counts not equal
+       else
+       {
+          // close file
+             // function: fclose
+          fclose( fileAccessPtr );
 
-			//return result
-			return false;
-		}
-	}
-	//otherwise, assume didn't find end
-	else
-	{
-		//set end state msg
-		copyString(endStateMsg, "Corrupted metadata op code");
+          // clear data from the structure list
+             // function: clearMetaDataList
+          *opCodeDataHead = clearMetaDataList( localHeadPtr );
 
-		//unset return state
-		returnState = false;
-	}
-	//check for any errors found (not no error)
-	if( accessResult != NO_ACCESS_ERR)
-	{
-		//clear op cmd list
-		localHeadPtr = clearMetaDataList( localHeadPtr );
-	}
-	//close access file	
-	fclose(fileAccessPtr );
+          // free temporary structure memory
+             // function: free
+          free( newNodePtr );
 
-	//free memory
-	free( newNodePtr );
-	//assign temp local head ptr to parameter return ptr
-	*opCodeDataHead = localHeadPtr;
-	
-	free( localHeadPtr );
+          // set access result to error
+          accessResult = UNBALANCED_START_END_ERR;
 
-	//return access result
-	return returnState;
+          // set end state message
+             // function: copyString
+          copyString( endStateMsg, 
+                            "Ubalanced start and end arguments in metadata" );
 
+          // return result of operation
+          return false;
+       }
+    }
+
+
+    // otherwise, assume didn't find end
+    else
+    {
+       // set end state message
+          // function: copyString
+       copyString( endStateMsg, "Corrupted metadata op code" );
+          
+       // unset return state
+       returnState = false;
+    }
+
+    // check for any errors found (not no error)
+    if( accessResult != NO_ACCESS_ERR )
+    {
+       // clear the op command list
+          // function: clearMetaDataList
+       localHeadPtr = clearMetaDataList( localHeadPtr );
+    }
+
+    // close access file
+       // function: fclose
+    fclose( fileAccessPtr );
+
+    // release temporary structure memory
+       // function: free
+    free( newNodePtr );
+
+    // assign temporary local head pointer to parameter return pointer
+    *opCodeDataHead = localHeadPtr;
+
+    // return access result
+    return returnState;
 }
 
-/*
-getOpCommand
-acquires one op command line from prev. opened file, parses it, and sets
-		various struct members according to the 3 letter cmd
 
-output param: pointer to one op code struct OpCodeType*
-output Returned: coded result of operation (OpCodeMessages)
-Dependenceis: getStringToDelim, getCommand, copyString, verifyValidCommand,
-				compareString, getStringArrg, verifyFirstStringArg, getNumArg
+/*
+Name: getOpCommand
+Process: acquires one op command line from a previously opened file,
+         parses it, and sets various struct members according
+         to the three letter command
+Function Input/Parameters: pointer to open file handle (FILE *)
+Function Output/Parameters: pointer to one op code struct (OpCodeType *)
+Function Output/Returned: coded result of operation (OpCodeMessages)
+Device Input/File: op code line uploaded
+Device Output/Device: none
+Dependencies: getStringToDelimiter, getCommand, copyString, verifyValidCommand,
+              compareString, getStringArg, verifyFirstStringArg, getNumberArg           
 */
 OpCodeMessages getOpCommand( FILE *filePtr, OpCodeType *inData )
 {
-	//initalize func/vars
-	const int MAX_CMD_LENGTH = 5;
-	const int MAX_ARG_STR_LENGTH = 15;
+    // initilalize function/variables
 
-	int numBuffer = 0;
-	char strBuffer[ STD_STR_LEN ];
-	char cmdBuffer [MAX_CMD_LENGTH ];
-	char argStrBuffer[ MAX_ARG_STR_LENGTH ];
-	int runningStringIndex = 0;
-	bool arg2FailureFlag = false;
-	bool arg3FailureFlag = false;
+       // initialize local constants
+       const int MAX_CMD_LENGTH = 5;
+       const int MAX_ARG_STR_LENGTH = 15;
 
-	//get whole op command as string, check for successful access
-	if( getStringToDelimiter( filePtr, SEMICOLON, strBuffer ) )
-	{
-		//get 3 letter cmd
-		runningStringIndex = getCommand( cmdBuffer, 
-											strBuffer, runningStringIndex );
-		
-		//assign op command to node
-		copyString( inData->command, cmdBuffer );
-	}
-	//otherwise, assume unsuccessful accesss
-	else
-	{
-		//set ptr to data struct to null
-		inData = NULL;
+       // initialize other variables
+       int numBuffer = 0;
+       char strBuffer[ STD_STR_LEN ];
+       char cmdBuffer[ MAX_CMD_LENGTH ];
+       char argStrBuffer[ MAX_ARG_STR_LENGTH ];
+       int runningStringIndex = 0;
+       bool arg2FailureFlag = false;
+       bool arg3FailureFlag = false;
 
-		//return op command access failure
-		return OPCMD_ACCESS_ERR;
-	}
-	//verify op command
-	if( !verifyValidCommand( cmdBuffer ) )
-	{
-		//return op cmd errro
-		return CORRUPT_OPCMD_ERR;
-	}
 
-	//set all struct values that may not be initailized to defaults
-	inData->pid = 0;
-	inData->inOutArg[ 0 ] = NULL_CHAR;
-	inData->intArg2 = 0;
-	inData->intArg3 = 0;
-	inData->opEndTime = 0.0;
-	inData->nextNode = NULL;
+    // get whole op command as string, check for successful access
+       // function: getStringToDelimiter
+    if( getStringToDelimeter( filePtr, SEMICOLON, strBuffer ) )
+    {
+       // get three-letter command
+          // function: getCommand
+       runningStringIndex = getCommand( cmdBuffer, strBuffer, 
+                                                         runningStringIndex );
 
-	//printf("cmdBuffer is: %s\n", cmdBuffer );
+       // assign op command to node
+          // function: copyString
+       copyString( inData->command, cmdBuffer );
+    }
 
-	//check for device cmd
-	if( compareStrings( cmdBuffer, "dev") == STR_EQ )
-	{
-		//get in/out arg
-		runningStringIndex = getStringArg( argStrBuffer, 
-											strBuffer, runningStringIndex );
-		
-		//set device in/out arg
-		copyString( inData->inOutArg, argStrBuffer );
+    // otherwise, assume unsuccessful access
+    else
+    {
+       // set pointer to data structure to null
+       inData = NULL;
 
-		//check correct arg
-		if( compareStrings( argStrBuffer, "in" ) != STR_EQ &&
-				compareStrings( argStrBuffer, "out" ) !=STR_EQ )
-		{
-			//printf("Error up here bozo\n");
-			//return arg err
-			return CORRUPT_OPCMD_ARG_ERR;
-		}
-	}
+       // return op command access failure
+       return OPCMD_ACCESS_ERR;
+    }
 
-	//get first string arg
-	runningStringIndex = getStringArg( argStrBuffer, 
-								strBuffer, runningStringIndex );
+    // verify op command
+    if( !verifyValidCommand( cmdBuffer ) )
+    {
+       // return op command error
+       return CORRUPT_OPCMD_ERR;
+    }
 
-	//set device in/out arg
-	copyString( inData->strArg1, argStrBuffer );
+    // set all struct values that may not be initialized to defaults
+    inData->pid = 0;
+    inData->inOutArg[ 0 ] = NULL_CHAR;
+    inData->intArg2 = 0;
+    inData->intArg3 = 0;
+    inData->opEndTime = 0.0;
+    inData->nextNode = NULL;
 
-	bool verifyFirstStr = !verifyFirstStringArg( argStrBuffer );
-	//check for legit first string arg
-	if( verifyFirstStr )
-	{
-		//return arg error
-		return CORRUPT_OPCMD_ARG_ERR;
-	}
+    // check for device command
+    if( compareString( cmdBuffer, "dev" ) == STR_EQ )
+    {
+       // get in/out argument
+       runningStringIndex = getStringArg( argStrBuffer, 
+                                             strBuffer, runningStringIndex );
 
-	//check for last op cmd found
-	if( compareStrings( inData->command, "sys") == STR_EQ &&
-			compareStrings(inData->strArg1, "end" ) == STR_EQ )
-	{
-		//return last op cmd found msg
-		return LAST_OPCMD_FOUND_MSG;
-	}
+       // set device in/out argument
+       copyString( inData->inOutArg, argStrBuffer );
 
-	//check for app start seconds arg
-	if( compareStrings( inData->command, "app" ) == STR_EQ &&
-		compareStrings( inData->strArg1, "start" ) == STR_EQ )
-	{
-		//get num arg
-		runningStringIndex = getNumberArgs( &numBuffer, 
-										strBuffer, runningStringIndex );
+       // check correct argument
+       if( compareString( argStrBuffer, "in" ) != STR_EQ
+             && compareString( argStrBuffer, "out" ) != STR_EQ )
+       {
+          // return argument error
+          return CORRUPT_OPCMD_ARG_ERR;
+       }
+ 
+    }
 
-		//check for failed num access
-		if( numBuffer <= BAD_ARG_VAL )
-		{
-			//set failure flag
-			arg2FailureFlag = true;
-		}
-		//set first int arg to num
-		inData->intArg2 = numBuffer;
-	}
-	//check for cpu cycle time
-	else if( compareStrings( inData->command, "cpu" ) == STR_EQ )
-	{
-		//get num arg
-		runningStringIndex = getNumberArgs( &numBuffer, 
-												strBuffer, runningStringIndex);
-		//check for failed num access
-		if( numBuffer <= BAD_ARG_VAL )
-		{
-			//set failure flag
-			arg2FailureFlag = true;
-		}
-		//set first int arg  to num
-		inData->intArg2 = numBuffer;
-	}
-	//check for device cycle time
-	else if( compareStrings( inData->command, "dev" ) == STR_EQ)
-	{
-		//get num arg
-		runningStringIndex = getNumberArgs( &numBuffer, strBuffer,
-														runningStringIndex);
-		//check for failed num access
-		if( numBuffer <= BAD_ARG_VAL )
-		{
-			//set fail flag
-			arg2FailureFlag = true;
-		}
-		//set first int arg to number
-		inData->intArg2 = numBuffer;
-	}
-	//check for mem base and offset
-	else if( compareStrings( inData->command, "mem" ) == STR_EQ )
-	{
-		//get num arg for base
-		runningStringIndex = getNumberArgs( &numBuffer, 
-										strBuffer, runningStringIndex );
+    // get first string arg
+    runningStringIndex = getStringArg( argStrBuffer, 
+                                             strBuffer, runningStringIndex );
 
-		//check for failed num access
-		if( numBuffer <= BAD_ARG_VAL )
-		{
-			//set fail flag
-			arg2FailureFlag = true;
-		}
+    // set device in/out argument
+    copyString( inData->strArg1, argStrBuffer );
 
-		//set first int arg to num
-		inData->intArg2 = numBuffer;
+    // check for legitimate first string arg
+    if( !verifyFirstStringArg( argStrBuffer ) )
+    {
+       // return argument error
+       return CORRUPT_OPCMD_ARG_ERR;
+    }
 
-		//get num arg for offset
-		runningStringIndex = getNumberArgs( &numBuffer,
-								strBuffer, runningStringIndex );
+    // check for last op command found
+    if( compareString( inData->command, "sys" ) == STR_EQ
+                         && compareString( inData->strArg1, "end" ) == STR_EQ )
+    {
+       // return last op command found message
+       return LAST_OPCMD_FOUND_MSG;
+    }
 
-		//check for failed num access
-		if( numBuffer <= BAD_ARG_VAL )
-		{
-			//set failure flag
-			arg3FailureFlag = true;
-		}
+    // check for app start seconds argument
+    if( compareString( inData->command, "app" ) == STR_EQ
+               && compareString( inData->strArg1, "start" ) == STR_EQ )
+    {
+       // get number argument
+          // function: getNumberArg
+       runningStringIndex = getNumberArg( &numBuffer, 
+                                              strBuffer, runningStringIndex );
 
-		//set second int arg to number
-		inData->intArg3 = numBuffer;
-	}
-	//check int args for upload failure
-	if( arg2FailureFlag || arg3FailureFlag )
-	{
-		//printf("arg2F is: %d and arg3F is: %d", arg2FailureFlag, arg3FailureFlag );
-		//return corrupt op command error error
-		return CORRUPT_OPCMD_ARG_ERR;
-	}
-	//return complete op command found message
-	return COMPLETE_OPCMD_FOUND_MSG;
+       // check for failed number access
+       if( numBuffer <= BAD_ARG_VAL )
+       {
+          // set failure flag
+          arg2FailureFlag = true;
+       }
+
+       // set first int argument to number
+       inData->intArg2 = numBuffer;
+    }
+
+    // check for cpu cycle time
+    else if( compareString( inData->command, "cpu" ) == STR_EQ )
+    {
+       // get number argument
+          // function: getNumberArg
+       runningStringIndex = getNumberArg( &numBuffer, 
+                                              strBuffer, runningStringIndex );
+
+       // check for failed number access
+       if( numBuffer <= BAD_ARG_VAL )
+       {
+          // set failure flag
+          arg2FailureFlag = true;
+       }
+
+       // set first int argument to number
+       inData->intArg2 = numBuffer;
+    }
+
+    // check for device cycle time
+    else if( compareString( inData->command, "dev" ) == STR_EQ )
+    {
+       // get number argument
+          // function: getNumberArg
+       runningStringIndex = getNumberArg( &numBuffer, 
+                                            strBuffer, runningStringIndex );
+
+       // check for failed number access
+       if( numBuffer <= BAD_ARG_VAL )
+       {
+          // set failure flag
+          arg2FailureFlag = true;
+       }
+
+       // set first int argument to number
+       inData->intArg2 = numBuffer;
+
+    }
+
+    // check for memory base and offset
+    else if( compareString( inData->command, "mem" ) == STR_EQ )
+    {
+       // get number argument for base
+          // function: getNumberArg
+       runningStringIndex = getNumberArg( &numBuffer, 
+                                               strBuffer, runningStringIndex );
+
+       // check for failed number access
+       if( numBuffer <= BAD_ARG_VAL )
+       {
+          // set failure flag
+          arg2FailureFlag = true;
+       }
+
+       // set first int argument to number
+       inData->intArg2 = numBuffer;
+
+       // get number argument for offset
+          // function: getNumberArg
+       runningStringIndex = getNumberArg( &numBuffer, 
+                                               strBuffer, runningStringIndex );
+
+       // check for failed number access
+       if( numBuffer <= BAD_ARG_VAL )
+       {
+          // set failure flag
+          arg3FailureFlag = true;
+       }
+
+       // set second int argument to number
+       inData->intArg3 = numBuffer;
+    }
+
+    // check int args for upload failure
+    if( arg2FailureFlag || arg3FailureFlag )
+    {
+       // return corrupt op command error error
+       return CORRUPT_OPCMD_ARG_ERR;
+    }
+
+    // return complete op command found message
+    return COMPLETE_OPCMD_FOUND_MSG;
 }
 
 /*
-getNumberArgs
-starts at a given index, captures and assembles int arg, and returns as param
+Name: getNumberArg
+Process: starts at given index, captures and assembles integer argument,
+         and returns as parameter
+Function Input/Parameters: input string (const char *), starting index (int)
+Function Output/Parameters: pointer to captured integer value
+Function Output/Returned: updated index for next function start
+Device Input/File: none
+Device Output/Device: none
+Dependencies: isDigit           
 */
-int getNumberArgs ( int *number, const char *inputStr, int index )
+int getNumberArg( int *number, const char *inputStr, int index )
 {
-	bool foundDigit = false;
-	*number = 0;
-	int multiplier = 1;
+    // initialize function/variables
+    bool foundDigit = false;
+    *number = 0;
+    int multiplier = 1;
 
-	//loop to skip white space
-	while( inputStr[index] <= SPACE || inputStr[index] == COMMA )
-	{
-		index++;
-	}
-		//increment index
-	//loop across str len
-		//set digit found flag
-	while( isDigit( inputStr[index] ) == true  &&
-						inputStr[index] != NULL_CHAR ) 
-	{
-		//assign digit to output
-		foundDigit = true;
+    // loop to skip white space
+    while( inputStr[ index ] <= SPACE || inputStr[ index ] == COMMA )
+    {
+      // increment the index
+      index++;
+    }
 
-		//assign digit to output
-		(*number) = (*number) * multiplier + inputStr[index] - '0';
+    // loop across string length
+    while( isDigit( inputStr[ index ] ) == true 
+                      && inputStr[ index ] != NULL_CHAR )
+    {
+       // set digit found flag
+       foundDigit = true;
 
-		//increment index and multiplyer
-		index = index + 1;
-		multiplier = 10;
-	}
-	//check for digit not found
-	if( !foundDigit )
-	{
-		//set num to BAD_ARG_VAL, use deref for ptr
-		*number = BAD_ARG_VAL;
-	}
+       // assign digit to output
+       (*number) = (*number) * multiplier + inputStr[ index ] - '0';
 
-	//return current index
-	return index;
+       // increment index and multiplier
+       index++;
+       multiplier = 10;
+    }
+    // check for digit not found
+    if( !foundDigit )
+    {
+       // set number to BAD_ARG_VAL, use dereference for pointer
+       *number = BAD_ARG_VAL;
+    }
+
+    // return current index
+    return index;
 }
 
+
 /*
-getStringArg
-starts at given index, captures and assembles string argument, returns as param
+Name: getStringArg
+Process: starts at given index, captures and assembles string argument,
+         and returns as parameter
+Function Input/Parameters: input string (const char *), starting index (int)
+Function Output/Parameters: pointer to captured string argument (char *)
+Function Output/Returned: updated index for next function start
+Device Input/File: none
+Device Output/Device: none
+Dependencies: none           
 */
 int getStringArg( char *strArg, const char *inputStr, int index )
 {
-	int localIndex = 0;
-	//loop to skip white space
-	while( inputStr[ index ] <= SPACE || inputStr[ index ] == COMMA )
-	{
-		//inc index
-		index++;
-	}
+    // initialize function/variables
+    int localIndex = 0;
 
-	//loop across str len
-	while( inputStr[ index ] != COMMA && inputStr[ index ] != NULL_CHAR )
-	{
-		//assign char from input string to buffer string
-		strArg[ localIndex ] = inputStr[ index ];
+    // loop to skip white space
+    while( inputStr[ index ] <= SPACE || inputStr[ index ] == COMMA )
+    {
+       // increment the index
+       index++;
+    }
 
-		//increment indicies
-		index++;
-		localIndex++;
+    // loop across string length
+    while( inputStr[ index ] != COMMA && inputStr[ index ] != NULL_CHAR )
+    {
+       // assign character from input string to buffer string
+       strArg[ localIndex ] = inputStr[ index ];
 
-		//set next char to null char
-		strArg[ localIndex ] = NULL_CHAR;
-	}
-	//return current index
-	return index;
+       // increment index
+       index++;
+       localIndex++;
+
+       // set next character to null character
+       strArg[ localIndex ] = NULL_CHAR;
+    }
+
+
+    // return current index
+    return index; 
 }
 
-
 /*
-isDigit
-tests char param for digit, returns true if it is a digit
+Name: isDigit
+Process: tests character parameter for digit, returns true if is digit,
+         false otherwise
+Function Input/Parameters: test character (char)
+Function Output/Parameters: none
+Function Output/Returned: Boolean result of test (bool)
+Device Input/File: none
+Device Output/Device: none
+Dependencies: none          
 */
 bool isDigit( char testChar )
 {
-	//check for test char between chars '0'-'9'
-	return (testChar >= '0' && testChar <= '9');
+    // check for test character between charcters '0' - '9', return
+    return ( testChar >= '0' && testChar <= '9'  );
 }
 
+
 /*
-manages count of "end" arg to be compared at end of process input
+Name: updateEndCount
+Process: manages count of "end" arguments to be compared at end
+         of process input
+Function Input/Parameters: initial count (int)
+                           test string for "end" (const char *)
+Function Output/Parameters: none
+Function Output/Returned: updated count, if "end" string found,
+                          otherwise no change
+Device Input/File: none
+Device Output/Device: none
+Dependencies: captureString         
 */
-int updateEndCount( int count, const char *opString)
+int updateEndCount( int count, const char *opString )
 {
-	//check for "end in op string
-	if( compareStrings( opString, "end" ) == STR_EQ )
-	{
-		//return incremented end count
-		return count + 1;
-	}
-	//return unchanged end count
-	return count;
+    // check for "end" in op string
+       // function: compareString
+    if( compareString( opString, "end" ) == STR_EQ )
+    {
+      // return incremented end count
+      return count + 1;
+    }
+
+
+    // return unchanged end count
+    return count; 
 }
 
+
 /*
-updateStartCount
-manages count of "start" arguments to be compared at start of process input
+Name: updateStartCount
+Process: manages count of "start" arguments to be compared at end
+         of process input
+Function Input/Parameters: initial count (int)
+                           test string for "start" (const char *)
+Function Output/Parameters: none
+Function Output/Returned: updated count, if "start" string found,
+                          otherwise no change
+Device Input/File: none
+Device Output/Device: none
+Dependencies: captureString          
 */
-int updateStartCount(int count, const char *opString)
+int updateStartCount( int count, const char *opString )
 {
-	//check for "start in op string
-	if( compareStrings( opString, "start" ) == STR_EQ )
-	{
-		//return incremented start count
-		return count + 1;
-	}
-	//return unchanged start count
-	return count;
+    // check for "start" in op string
+       // function: compareString
+    if( compareString( opString, "start" ) == STR_EQ )
+    {
+      // return incremented start count
+      return count + 1;
+    }
+
+
+    // return unchanged start count
+    return count;
+    
 }
 
-/*
-verifyFirstStringArg
-checks for all possiblities of first argument string of op command
-*/
-bool verifyFirstStringArg( const char *strArg)
-{
 
-	//check for string holding correct first arg
-	return(compareStrings( strArg, "access" ) == STR_EQ ||
-	compareStrings( strArg, "allocate" ) == STR_EQ ||
-	compareStrings( strArg, "end" ) == STR_EQ ||
-	compareStrings( strArg, "ethernet" ) == STR_EQ ||
-	compareStrings( strArg, "hard drive" ) == STR_EQ ||
-	compareStrings( strArg, "keyboard" ) == STR_EQ ||
-	compareStrings( strArg, "monitor" ) == STR_EQ ||
-	compareStrings( strArg, "printer" ) == STR_EQ ||
-	compareStrings( strArg, "process" ) == STR_EQ ||
-	compareStrings( strArg, "serial" ) == STR_EQ ||
-	compareStrings( strArg, "sound signal" ) == STR_EQ ||
-	compareStrings( strArg, "start" ) == STR_EQ ||
-	compareStrings( strArg, "usb" ) == STR_EQ ||
-	compareStrings( strArg, "video signal" ) == STR_EQ  );
+/*
+Name: verifyFirstStringArg
+Process: checks for all possibilities of first argument string of op command
+Function Input/Parameters: test string (const char *)
+Function Output/Parameters: none
+Function Output/Returned: Boolean result of test (bool)
+Device Input/File: none
+Device Output/Device: none
+Dependencies: compareString          
+*/
+bool verifyFirstStringArg( const char *strArg )
+{
+   // check for string holding correct first argument, return result
+      // function: compareString
+   return( compareString( strArg, "access" ) == STR_EQ
+       || compareString( strArg, "allocate" ) == STR_EQ
+       || compareString( strArg, "end" ) == STR_EQ
+       || compareString( strArg, "ethernet" ) == STR_EQ
+       || compareString( strArg, "hard drive" ) == STR_EQ
+       || compareString( strArg, "keyboard" ) == STR_EQ
+       || compareString( strArg, "monitor" ) == STR_EQ
+       || compareString( strArg, "printer" ) == STR_EQ
+       || compareString( strArg, "process" ) == STR_EQ
+       || compareString( strArg, "serial" ) == STR_EQ
+       || compareString( strArg, "sound signal" ) == STR_EQ
+       || compareString( strArg, "start" ) == STR_EQ
+       || compareString( strArg, "usb" ) == STR_EQ
+       || compareString( strArg, "video signal" ) == STR_EQ );
 }
 
-/*
-verifyValidCommand
-checks for all possiblities of 3 letter op code cmd
-*/
-bool verifyValidCommand( char *testCmd)
-{
-	//check for string holding 3 letter op code command
-	return( compareStrings( testCmd, "sys" ) == STR_EQ || 
-	compareStrings( testCmd, "app" ) == STR_EQ || 
-	compareStrings( testCmd, "cpu" ) == STR_EQ || 
-	compareStrings( testCmd, "mem" ) == STR_EQ || 
-	compareStrings( testCmd, "dev" ) == STR_EQ );
 
+/*
+Name: verifyValidCommand
+Process: checks for all possibilities of three-letter op command
+Function Input/Parameters: test string for command (char *)
+Function Output/Parameters: none
+Function Output/Returned: Boolean result of test (bool)
+Device Input/File: none
+Device Output/Device: none
+Dependencies: compareString          
+*/
+bool verifyValidCommand( char *testCmd )
+{
+    // check for string holding three-letter op code command, return result
+      // function: compareString
+    return( compareString( testCmd, "sys" ) == STR_EQ
+        || compareString( testCmd, "app" ) == STR_EQ
+        || compareString( testCmd, "cpu" ) == STR_EQ
+        || compareString( testCmd, "mem" ) == STR_EQ
+        || compareString( testCmd, "dev" ) == STR_EQ );
 }
