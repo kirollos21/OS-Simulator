@@ -70,24 +70,23 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: None
 */
-PCB *createNewPCBNode(int pid, OpCodeType *mdPtr) 
+PCB *createNewPCBNode(int pid, OpCodeType *mdPtr, ConfigDataType *configPtr) 
 {
     // Allocate memory for the new PCB node
     PCB *newNode = (PCB *)malloc(sizeof(PCB));
-    //check if memory allocation failed
+
     if (newNode == NULL) 
     {
-        // Memory allocation failed
-        return NULL;
+        return NULL; // Handle memory allocation failure
     }
 
     // Set PCB attributes
     newNode->pid = pid;
     newNode->mdPtr = mdPtr;
-    newNode->remainingtime = calculateRemainingTime(newNode, configPtr);
+    newNode->remainingtime = calculateRemainingTime(newNode, configPtr); // Set initial remaining time
     newNode->currentState = NEW;
     newNode->nextNode = NULL;
-    //return new node
+
     return newNode;
 }
 
@@ -994,7 +993,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     }
 
     // Print the title and start simulation
-    printTitle(configPtr, outputFile);
+    printTitle(configPtr, currentPCB, outputFile); // Pass PCB pointer
     elapsedTime = accessTimer(LAP_TIMER, NULL);
     printStartSim(configPtr, currentPCB, elapsedTime, outputFile);
     currentPCB->currentState = READY;
@@ -1042,7 +1041,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
                 // Memory operation
                 handleMemoryOperation(currentPCB, configPtr, outputFile);
                 displayMem(currentPCB, configPtr, outputFile);
-                elapsedTime += configPtr->memCycleRate; // Increment time by memory cycle rate
+                elapsedTime += configPtr->ioCycleRate; // Using ioCycleRate as a placeholder
             } 
             else if (compareString(currentPCB->mdPtr->command, "dev") == STR_EQ) 
             {
