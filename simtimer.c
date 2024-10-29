@@ -76,72 +76,32 @@ void *runTimer( void *arg )
    }
    
 
-double accessTimer( int controlCode, char *timeStr )
-   {
-    static bool running = false;
-    static int startSec = 0, endSec = 0, startUSec = 0, endUSec = 0;
-    static int lapSec = 0, lapUSec = 0;
-    struct timeval startData, lapData, endData;
-    double fpTime = 0.0;
+double accessTimer(int controlCode, char *timeStr) 
+{
+    static struct timespec startTime;
+    struct timespec currentTime;
+    
+    // Start time initialization
+    if (controlCode == START_TIMER) 
+    {
+        clock_gettime(CLOCK_MONOTONIC, &startTime);
+        return 0.0;
+    }
+    
+    // Calculate the elapsed time
+    clock_gettime(CLOCK_MONOTONIC, &currentTime);
+    double elapsedTime = (currentTime.tv_sec - startTime.tv_sec) * 1000.0;
+    elapsedTime += (currentTime.tv_nsec - startTime.tv_nsec) / 1000000.0;
 
-    switch( controlCode )
-       {
-        case ZERO_TIMER:
-           gettimeofday( &startData, NULL );
-           running = true;
+    // Optional string formatting for display
+    if (timeStr != NULL) 
+    {
+        sprintf(timeStr, "%1.6f", elapsedTime / 1000.0); // Converts to seconds
+    }
 
-           startSec = startData.tv_sec;
-           startUSec = startData.tv_usec;
+    return elapsedTime;
+}
 
-           fpTime = 0.000000000;
-           lapSec = 0.000000000;
-           lapUSec = 0.000000000;
-
-           timeToString( lapSec, lapUSec, timeStr ); 
-           break;
-           
-        case LAP_TIMER:
-           if( running == true )
-              {
-               gettimeofday( &lapData, NULL );
-
-               lapSec = lapData.tv_sec;
-               lapUSec = lapData.tv_usec;
-
-               fpTime = processTime( startSec, lapSec, 
-                                                 startUSec, lapUSec, timeStr );
-              }
-
-           else
-              {
-               fpTime = 0.000000000;
-              }
-           break;
-
-        case STOP_TIMER:
-           if( running == true )
-              {
-               gettimeofday( &endData, NULL );
-               running = false;
-
-               endSec = endData.tv_sec;
-               endUSec = endData.tv_usec;
-
-               fpTime = processTime( startSec, endSec, 
-                                                 startUSec, endUSec, timeStr );
-              }
-
-           // assume timer not running
-           else
-              {
-               fpTime = 0.000000000;
-              }
-           break;
-       }
-
-    return fpTime;
-   }
-   
    //gives value as a double
    //or you can get it back as a string
    //exactly 6 digits to the left timeStr
