@@ -147,7 +147,7 @@ bool memoryAccess(int processID, int base, int offset);
 
 void clearProcessMemory(int processID);
 
-void printMemoryState();
+void printMemoryState(FILE *file);
 
 void displayMemoryState(ConfigDataType *configPtr, FILE *file, double elapsedTime, const char *message);
 

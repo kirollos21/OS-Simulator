@@ -23,9 +23,9 @@ Dependencies: createPCB_List, accessTimer, displayProcessState,
               allocateMemory, memoryAccess, clearProcessMemory, 
               displayOpCode, displayMemoryState
 */
+
 void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
 {
-    // Initialize variables
     OpCodeType *localMetaPtr = metaDataMstrPtr;
     PCB *newPCBList = createPCB_List(configPtr, localMetaPtr);
     PCB *wkgPtrPCB = newPCBList;
@@ -33,7 +33,6 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     double elapsedTime = 0.0;
     FILE *file = NULL;
 
-    // Open log file if needed
     if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
     {
         file = fopen(configPtr->logToFileName, "w");
@@ -44,16 +43,16 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         }
     }
 
-    // Start simulation timer
     accessTimer(ZERO_TIMER, timeStr);
     elapsedTime = 0.000000;
 
     // Print title and initial simulation message
     printTitle(configPtr, file, elapsedTime);
+    fprintf(file ? file : stdout, "Simulator Program\n=================\n");
+
     elapsedTime += accessTimer(LAP_TIMER, timeStr);
     fprintf(file ? file : stdout, "%1.6f, OS: Simulator start\n", elapsedTime);
 
-    // Initialize all processes to READY state
     while (wkgPtrPCB != NULL)
     {
         wkgPtrPCB->currentState = READY_STATE;
@@ -61,34 +60,31 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         wkgPtrPCB = wkgPtrPCB->nextNode;
     }
 
-    // Log initial memory state
     displayMemoryState(configPtr, file, elapsedTime, "After memory initialization");
 
-    // Reset working PCB pointer to the start of the list
     wkgPtrPCB = newPCBList;
 
-    // Process loop
     while (wkgPtrPCB != NULL)
     {
-        // Set process to RUNNING and log state
         wkgPtrPCB->currentState = RUNNING_STATE;
         displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
 
-        // Process operations
         OpCodeType *opCode = wkgPtrPCB->mdPtr;
         while (opCode != NULL)
         {
-            // Log each operation's start
             if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "allocate") == 0)
             {
-                // Attempt memory allocation
+                fprintf(file ? file : stdout, "%1.6f, Process: %d, mem allocate request (%d, %d)\n", elapsedTime, wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3);
+
                 if (allocateMemory(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3))
                 {
                     displayMemoryState(configPtr, file, elapsedTime, "After allocate success");
+                    fprintf(file ? file : stdout, "%1.6f, Process: %d, successful mem allocate request\n", elapsedTime, wkgPtrPCB->pid);
                 }
                 else
                 {
                     displayMemoryState(configPtr, file, elapsedTime, "After allocate failure");
+                    fprintf(file ? file : stdout, "%1.6f, Process: %d, failed mem allocate request\n", elapsedTime, wkgPtrPCB->pid);
                     wkgPtrPCB->currentState = EXIT_STATE;
                     displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
                     clearProcessMemory(wkgPtrPCB->pid);
@@ -97,14 +93,18 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
             }
             else if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "access") == 0)
             {
-                // Attempt memory access
+                fprintf(file ? file : stdout, "%1.6f, Process: %d, mem access request (%d, %d)\n", elapsedTime, wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3);
+
                 if (memoryAccess(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3))
                 {
                     displayMemoryState(configPtr, file, elapsedTime, "After access success");
+                    fprintf(file ? file : stdout, "%1.6f, Process: %d, successful mem access request\n", elapsedTime, wkgPtrPCB->pid);
                 }
                 else
                 {
                     displayMemoryState(configPtr, file, elapsedTime, "After access failure");
+                    fprintf(file ? file : stdout, "%1.6f, Process: %d, failed mem access request\n", elapsedTime, wkgPtrPCB->pid);
+                    fprintf(file ? file : stdout, "%1.6f, OS: Segmentation fault, Process %d ended\n", elapsedTime, wkgPtrPCB->pid);
                     wkgPtrPCB->currentState = EXIT_STATE;
                     displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
                     clearProcessMemory(wkgPtrPCB->pid);
@@ -113,42 +113,34 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
             }
             else
             {
-                // Log other operations
                 displayOpCode(configPtr, opCode, wkgPtrPCB, file, &elapsedTime);
             }
 
-            // Log operation end and move to next
             elapsedTime += accessTimer(LAP_TIMER, timeStr);
             opCode = opCode->nextNode;
         }
 
-        // Check if process exited prematurely due to memory issue
         if (wkgPtrPCB->currentState != EXIT_STATE)
         {
-            // Log normal process exit
             wkgPtrPCB->currentState = EXIT_STATE;
             displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
             clearProcessMemory(wkgPtrPCB->pid);
             displayMemoryState(configPtr, file, elapsedTime, "After clear process success");
         }
 
-        // Move to next process
         wkgPtrPCB = wkgPtrPCB->nextNode;
     }
 
-    // Log simulation stop and memory clearing
     elapsedTime += accessTimer(LAP_TIMER, timeStr);
     fprintf(file ? file : stdout, "%1.6f, OS: System stop\n", elapsedTime);
     displayMemoryState(configPtr, file, elapsedTime, "After clear all process success");
     fprintf(file ? file : stdout, "%1.6f, OS: Simulation end\n", elapsedTime);
 
-    // Final cleanup and close file if needed
     if (file != NULL)
     {
         fclose(file);
     }
 
-    // Stop the timer
     accessTimer(STOP_TIMER, timeStr);
     printf("\nSimulator Program End.\n\n");
 }
@@ -689,22 +681,23 @@ void clearProcessMemory(int processID) {
     printMemoryState();
 }
 
-void printMemoryState() {
-    printf("--------------------------------------------------\n");
-    for (int i = 0; i < MAX_MEMORY_BLOCKS; i++) {
-        printf("%d [ %s, P#: %d, %d-%d ] %d\n", i,
-               memory[i].isAllocated ? "Used" : "Open",
-               memory[i].processID,
-               memory[i].base,
-               memory[i].base + memory[i].offset - 1,
-               MEMORY_BLOCK_SIZE);
+void printMemoryState(FILE *file)
+{
+    for (int i = 0; i < MAX_MEMORY_BLOCKS; i++)
+    {
+        fprintf(file, "%d [ %s, P#: %s, %d-%d ] %d\n", i,
+                memory[i].isAllocated ? "Used" : "Open",
+                memory[i].isAllocated ? memory[i].processID : "x",
+                memory[i].base,
+                memory[i].base + memory[i].offset - 1,
+                MEMORY_BLOCK_SIZE);
     }
-    printf("--------------------------------------------------\n");
 }
 
-void displayMemoryState(ConfigDataType *configPtr, FILE *file, double elapsedTime, const char *message) {
-    printf("%1.6f, %s\n", elapsedTime, message);
-    if (file != NULL) {
-        fprintf(file, "%1.6f, %s\n", elapsedTime, message);
-    }
+void displayMemoryState(ConfigDataType *configPtr, FILE *file, double elapsedTime, const char *message)
+{
+    fprintf(file ? file : stdout, "--------------------------------------------------\n");
+    fprintf(file ? file : stdout, "%s\n", message);
+    printMemoryState(file ? file : stdout);
+    fprintf(file ? file : stdout, "--------------------------------------------------\n");
 }
