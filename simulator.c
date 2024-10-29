@@ -70,23 +70,24 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: None
 */
-PCB *createNewPCBNode(int pid, OpCodeType *mdPtr, ConfigDataType *configPtr) 
+PCB *createNewPCBNode(int pid, OpCodeType *mdPtr) 
 {
     // Allocate memory for the new PCB node
     PCB *newNode = (PCB *)malloc(sizeof(PCB));
-
+    //check if memory allocation failed
     if (newNode == NULL) 
     {
-        return NULL; // Handle memory allocation failure
+        // Memory allocation failed
+        return NULL;
     }
 
     // Set PCB attributes
     newNode->pid = pid;
     newNode->mdPtr = mdPtr;
-    newNode->remainingtime = calculateRemainingTime(newNode, configPtr); // Set initial remaining time
+    newNode->remainingtime = calculateRemainingTime(newNode, configPtr);
     newNode->currentState = NEW;
     newNode->nextNode = NULL;
-
+    //return new node
     return newNode;
 }
 
@@ -995,61 +996,88 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Print the title and start simulation
     printTitle(configPtr, outputFile);
     elapsedTime = accessTimer(LAP_TIMER, NULL);
-    printStartSim(configPtr, elapsedTime, outputFile);
+    printStartSim(configPtr, currentPCB, elapsedTime, outputFile);
+    currentPCB->currentState = READY;
+    displayProcessState(configPtr, currentPCB, outputFile);
+
+    // Print Memory Initialization
+    printMemInitial(configPtr, currentPCB, elapsedTime, outputFile);
 
     // Main simulation loop for each process
-    while (processCounter < totalProcesses) 
+    while (processCounter <= totalProcesses || compareString(currentPCB->mdPtr->strArg1, "end") != STR_EQ) 
     {
         // Select next process based on scheduling algorithm (SJF or FCFS)
-        currentPCB = getNextProcess(configPtr->cpuSchedCode, currentPCB);
-
-        // Set the process to RUNNING and print the transition
-        currentPCB->currentState = RUNNING;
-        elapsedTime = accessTimer(LAP_TIMER, NULL);
-        printProcessTransition("READY", "RUNNING", currentPCB->pid, elapsedTime, outputFile);
-
-        // Iterate through operations in the process
-        while (currentPCB->mdPtr != NULL && compareString(currentPCB->mdPtr->strArg1, "end") != STR_EQ) 
+        if (configPtr->cpuSchedCode == CPU_SCHED_SJF_N_CODE && processCounter == 0) 
         {
-            // Increment time based on operation type and configuration
+            currentPCB = getNextProcess(configPtr->cpuSchedCode, currentPCB);
+        } 
+        else if (processCounter != 0) 
+        {
+            currentPCB = getNextProcess(configPtr->cpuSchedCode, pcbList);
+        }
+
+        // Increment process counter and set the process to RUNNING
+        processCounter++;
+        currentPCB->currentState = RUNNING;
+
+        // Update elapsed time and print the transition
+        elapsedTime = accessTimer(LAP_TIMER, NULL);
+        printReadyRunning(outputFile, configPtr, currentPCB, elapsedTime);
+
+        // Process each operation in the process metadata
+        while (currentPCB->mdPtr != NULL && compareString(currentPCB->mdPtr->command, "app") != STR_EQ && 
+               compareString(currentPCB->mdPtr->strArg1, "end") != STR_EQ) 
+        {
+            elapsedTime = accessTimer(LAP_TIMER, NULL); // Update time
+
+            // Display operation based on its type
+            printOpCode(outputFile, configPtr, currentPCB);
+
             if (compareString(currentPCB->mdPtr->command, "cpu") == STR_EQ) 
             {
-                elapsedTime += configPtr->procCycleRate;
-                printOperation("CPU", "process operation", currentPCB->pid, elapsedTime, outputFile);
-            }
+                elapsedTime += configPtr->procCycleRate; // Increment time by processing rate
+            } 
             else if (compareString(currentPCB->mdPtr->command, "mem") == STR_EQ) 
             {
                 // Memory operation
                 handleMemoryOperation(currentPCB, configPtr, outputFile);
                 displayMem(currentPCB, configPtr, outputFile);
-                elapsedTime += configPtr->memCycleRate;
-            }
+                elapsedTime += configPtr->memCycleRate; // Increment time by memory cycle rate
+            } 
             else if (compareString(currentPCB->mdPtr->command, "dev") == STR_EQ) 
             {
                 // I/O operation based on device type (input/output)
                 handleIOOperation(currentPCB, configPtr, outputFile);
-                elapsedTime += configPtr->ioCycleRate;
+                elapsedTime += configPtr->ioCycleRate; // Increment time by I/O cycle rate
             }
 
             // Move to the next operation in metadata
             currentPCB->mdPtr = currentPCB->mdPtr->nextNode;
         }
 
-        // Set the process to EXIT state after all operations
-        currentPCB->currentState = EXIT;
-        elapsedTime = accessTimer(LAP_TIMER, NULL);
-        printProcessTransition("RUNNING", "EXIT", currentPCB->pid, elapsedTime, outputFile);
+        // Set the process to EXIT state after all operations are complete
+        currentPCB->currentState = EXITING;
+        elapsedTime = accessTimer(LAP_TIMER, NULL); // Update time
 
-        // Move to the next process
-        processCounter++;
+        // Display the process transition to EXIT state
+        if (configPtr->logToCode == LOGTO_MONITOR_CODE || configPtr->logToCode == LOGTO_BOTH_CODE) 
+        {
+            printf("%1.6f, OS: Process %d set to EXIT state\n", elapsedTime, currentPCB->pid);
+        }
+        if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE) 
+        {
+            fprintf(outputFile, "%1.6f, OS: Process %d set to EXIT state\n", elapsedTime, currentPCB->pid);
+        }
     }
 
-    // Print simulation end
-    printEndSim(configPtr, outputFile);
-
-    // Close output file if opened
-    if (outputFile != NULL) 
+    // Print simulation end and close file if opened
+    if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE) 
     {
+        fprintf(outputFile, "%1.6f, OS: Simulator End\n", elapsedTime);
         fclose(outputFile);
+    } 
+    else 
+    {
+        printf("%1.6f, OS: Simulator End\n", elapsedTime);
     }
 }
