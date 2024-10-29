@@ -29,19 +29,8 @@
 
 const char RADIX_POINT = '.';
 
-//WE ONLY CARE ABOUT THIS
-//IT RUNS FOR X MILLISECONDS
-//IT JUST SPINS
-//taking up time
-//DO NOT USE SLEEP
-//runTime needs to be  void*
-//pThread create will call this
-//pThread needs it to be a void*
-//pthreadCreate ->pThreadJoin
-//WE WILL MODIFY THIS CODE
-void *runTimer( void *arg )
+void runTimer( int milliSeconds )
    {
-    int *milliSeconds = (int *)arg;
     struct timeval startTime, endTime;
     int startSec, startUSec, endSec, endUSec;
     int uSecDiff, mSecDiff, secDiff, timeDiff;
@@ -53,7 +42,7 @@ void *runTimer( void *arg )
 
     timeDiff = 0;
 
-    while( timeDiff < *milliSeconds )
+    while( timeDiff < milliSeconds )
        {
         gettimeofday( &endTime, NULL );
 
@@ -72,9 +61,7 @@ void *runTimer( void *arg )
         secDiff = ( endSec - startSec ) * 1000;
         timeDiff = secDiff + mSecDiff;
        }
-       return NULL;
    }
-   
 
 double accessTimer( int controlCode, char *timeStr )
    {
@@ -141,10 +128,6 @@ double accessTimer( int controlCode, char *timeStr )
 
     return fpTime;
    }
-   
-   //gives value as a double
-   //or you can get it back as a string
-   //exactly 6 digits to the left timeStr
 
 double processTime( double startSec, double endSec, 
                            double startUSec, double endUSec, char *timeStr )
