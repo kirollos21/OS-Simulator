@@ -83,7 +83,7 @@ PCB *createNewPCBNode(int pid, OpCodeType *mdPtr, ConfigDataType *configPtr)
     // Set PCB attributes
     newNode->pid = pid;
     newNode->mdPtr = mdPtr;
-    newNode->remainingtime = calculateRemainingTime(newNode, configPtr); // Set initial remaining time
+    newNode->remainingtime = 0.0; // Set initial remaining time
     newNode->currentState = NEW;
     newNode->nextNode = NULL;
 
@@ -975,6 +975,19 @@ Device Output/Device: None
 Dependencies: createPCB_List, displayState, getNextProcess,
 displayOpCode, printTitle
 */
+/*
+Name: runSim
+Process: Runs the simulation based on the provided configuration
+and metadata
+Function Input/Parameters: Pointer to configuration data type, 
+pointer to metadata
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: createPCB_List, displayState, getNextProcess,
+displayOpCode, printTitle
+*/
 void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr) 
 {
     // Initialize variables
@@ -993,7 +1006,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     }
 
     // Print the title and start simulation
-    printTitle(configPtr, currentPCB, outputFile); // Pass PCB pointer
+    printTitle(configPtr, currentPCB, outputFile); // No pointer changes here
     elapsedTime = accessTimer(LAP_TIMER, NULL);
     printStartSim(configPtr, currentPCB, elapsedTime, outputFile);
     currentPCB->currentState = READY;
@@ -1003,60 +1016,52 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     printMemInitial(configPtr, currentPCB, elapsedTime, outputFile);
 
     // Main simulation loop for each process
-    while (processCounter <= totalProcesses || compareString(currentPCB->mdPtr->strArg1, "end") != STR_EQ) 
+    while (processCounter < totalProcesses) 
     {
         // Select next process based on scheduling algorithm (SJF or FCFS)
-        if (configPtr->cpuSchedCode == CPU_SCHED_SJF_N_CODE && processCounter == 0) 
-        {
-            currentPCB = getNextProcess(configPtr->cpuSchedCode, currentPCB);
-        } 
-        else if (processCounter != 0) 
-        {
-            currentPCB = getNextProcess(configPtr->cpuSchedCode, pcbList);
-        }
+        currentPCB = getNextProcess(configPtr->cpuSchedCode, currentPCB);
 
         // Increment process counter and set the process to RUNNING
         processCounter++;
         currentPCB->currentState = RUNNING;
 
-        // Update elapsed time and print the transition
+        // Get updated elapsed time for transition
         elapsedTime = accessTimer(LAP_TIMER, NULL);
         printReadyRunning(outputFile, configPtr, currentPCB, elapsedTime);
 
         // Process each operation in the process metadata
-        while (currentPCB->mdPtr != NULL && compareString(currentPCB->mdPtr->command, "app") != STR_EQ && 
-               compareString(currentPCB->mdPtr->strArg1, "end") != STR_EQ) 
+        while (currentPCB->mdPtr != NULL && compareString(currentPCB->mdPtr->strArg1, "end") != STR_EQ) 
         {
-            elapsedTime = accessTimer(LAP_TIMER, NULL); // Update time
+            // Get updated elapsed time before each operation
+            elapsedTime = accessTimer(LAP_TIMER, NULL); 
 
             // Display operation based on its type
             printOpCode(outputFile, configPtr, currentPCB);
 
             if (compareString(currentPCB->mdPtr->command, "cpu") == STR_EQ) 
             {
-                elapsedTime += configPtr->procCycleRate; // Increment time by processing rate
+                // Increment time by processing rate
+                elapsedTime += configPtr->procCycleRate;
             } 
             else if (compareString(currentPCB->mdPtr->command, "mem") == STR_EQ) 
             {
-                // Memory operation
-                handleMemoryOperation(currentPCB, configPtr, outputFile);
+                // Memory operation with updated time
                 displayMem(currentPCB, configPtr, outputFile);
-                elapsedTime += configPtr->ioCycleRate; // Using ioCycleRate as a placeholder
+                elapsedTime += configPtr->memCycleRate;
             } 
             else if (compareString(currentPCB->mdPtr->command, "dev") == STR_EQ) 
             {
-                // I/O operation based on device type (input/output)
-                handleIOOperation(currentPCB, configPtr, outputFile);
-                elapsedTime += configPtr->ioCycleRate; // Increment time by I/O cycle rate
+                // I/O operation with updated time
+                elapsedTime += configPtr->ioCycleRate;
             }
 
             // Move to the next operation in metadata
             currentPCB->mdPtr = currentPCB->mdPtr->nextNode;
         }
 
-        // Set the process to EXIT state after all operations are complete
-        currentPCB->currentState = EXITING;
-        elapsedTime = accessTimer(LAP_TIMER, NULL); // Update time
+        // Set the process to EXIT state after all operations
+        currentPCB->currentState = EXIT;
+        elapsedTime = accessTimer(LAP_TIMER, NULL); // Updated time for EXIT
 
         // Display the process transition to EXIT state
         if (configPtr->logToCode == LOGTO_MONITOR_CODE || configPtr->logToCode == LOGTO_BOTH_CODE) 
