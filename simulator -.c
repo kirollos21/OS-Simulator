@@ -1,9 +1,6 @@
-//  File: simulator.c
-//  Project: Sim02
-//  Secret ID: 708996
-//  Date: 10/28/2024
-
+// header files
 #include "simulator.h"
+
 
 /*
 Name: calculateRemainingTime
