@@ -24,37 +24,28 @@ Dependencies: createPCB_List, accessTimer, displayProcessState,
               displayOpCode, displayMemoryState
 */
 
-void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
-{
+void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr) {
     OpCodeType *localMetaPtr = metaDataMstrPtr;
     PCB *newPCBList = createPCB_List(configPtr, localMetaPtr);
     PCB *wkgPtrPCB = newPCBList;
     char timeStr[10];
     double elapsedTime = 0.0;
-    FILE *file = NULL;
-
-    if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
-    {
-        file = fopen(configPtr->logToFileName, "w");
-        if (file == NULL)
-        {
-            printf("Error: Unable to open log file\n");
-            return;
-        }
+    FILE *file = (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE) ? fopen(configPtr->logToFileName, "w") : NULL;
+    
+    if (file == NULL && (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)) {
+        printf("Error: Unable to open log file\n");
+        return;
     }
 
     accessTimer(ZERO_TIMER, timeStr);
-    elapsedTime = 0.000000;
-
-    // Print title and initial simulation message
+    elapsedTime = 0.0;
     printTitle(configPtr, file, elapsedTime);
     fprintf(file ? file : stdout, "Simulator Program\n=================\n");
 
     elapsedTime += accessTimer(LAP_TIMER, timeStr);
     fprintf(file ? file : stdout, "%1.6f, OS: Simulator start\n", elapsedTime);
 
-    while (wkgPtrPCB != NULL)
-    {
+    while (wkgPtrPCB != NULL) {
         wkgPtrPCB->currentState = READY_STATE;
         displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
         wkgPtrPCB = wkgPtrPCB->nextNode;
@@ -63,71 +54,16 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     displayMemoryState(configPtr, file, elapsedTime, "After memory initialization");
 
     wkgPtrPCB = newPCBList;
-
-    while (wkgPtrPCB != NULL)
-    {
+    while (wkgPtrPCB != NULL) {
         wkgPtrPCB->currentState = RUNNING_STATE;
         displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
-
-        OpCodeType *opCode = wkgPtrPCB->mdPtr;
-        while (opCode != NULL)
-        {
-            if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "allocate") == 0)
-            {
-                fprintf(file ? file : stdout, "%1.6f, Process: %d, mem allocate request (%d, %d)\n", elapsedTime, wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3);
-
-                if (allocateMemory(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3))
-                {
-                    displayMemoryState(configPtr, file, elapsedTime, "After allocate success");
-                    fprintf(file ? file : stdout, "%1.6f, Process: %d, successful mem allocate request\n", elapsedTime, wkgPtrPCB->pid);
-                }
-                else
-                {
-                    displayMemoryState(configPtr, file, elapsedTime, "After allocate failure");
-                    fprintf(file ? file : stdout, "%1.6f, Process: %d, failed mem allocate request\n", elapsedTime, wkgPtrPCB->pid);
-                    wkgPtrPCB->currentState = EXIT_STATE;
-                    displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
-                    clearProcessMemory(wkgPtrPCB->pid);
-                    break;
-                }
-            }
-            else if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "access") == 0)
-            {
-                fprintf(file ? file : stdout, "%1.6f, Process: %d, mem access request (%d, %d)\n", elapsedTime, wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3);
-
-                if (memoryAccess(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3))
-                {
-                    displayMemoryState(configPtr, file, elapsedTime, "After access success");
-                    fprintf(file ? file : stdout, "%1.6f, Process: %d, successful mem access request\n", elapsedTime, wkgPtrPCB->pid);
-                }
-                else
-                {
-                    displayMemoryState(configPtr, file, elapsedTime, "After access failure");
-                    fprintf(file ? file : stdout, "%1.6f, Process: %d, failed mem access request\n", elapsedTime, wkgPtrPCB->pid);
-                    fprintf(file ? file : stdout, "%1.6f, OS: Segmentation fault, Process %d ended\n", elapsedTime, wkgPtrPCB->pid);
-                    wkgPtrPCB->currentState = EXIT_STATE;
-                    displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
-                    clearProcessMemory(wkgPtrPCB->pid);
-                    break;
-                }
-            }
-            else
-            {
-                displayOpCode(configPtr, opCode, wkgPtrPCB, file, &elapsedTime);
-            }
-
-            elapsedTime += accessTimer(LAP_TIMER, timeStr);
-            opCode = opCode->nextNode;
-        }
-
-        if (wkgPtrPCB->currentState != EXIT_STATE)
-        {
+        handleProcess(configPtr, wkgPtrPCB, file, elapsedTime);
+        if (wkgPtrPCB->currentState != EXIT_STATE) {
             wkgPtrPCB->currentState = EXIT_STATE;
             displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
             clearProcessMemory(wkgPtrPCB->pid);
             displayMemoryState(configPtr, file, elapsedTime, "After clear process success");
         }
-
         wkgPtrPCB = wkgPtrPCB->nextNode;
     }
 
@@ -136,11 +72,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     displayMemoryState(configPtr, file, elapsedTime, "After clear all process success");
     fprintf(file ? file : stdout, "%1.6f, OS: Simulation end\n", elapsedTime);
 
-    if (file != NULL)
-    {
-        fclose(file);
-    }
-
+    if (file != NULL) fclose(file);
     accessTimer(STOP_TIMER, timeStr);
     printf("\nSimulator Program End.\n\n");
 }
@@ -634,22 +566,21 @@ void printTitle(ConfigDataType *config, FILE* fileName, double time)
 	}
 }
 
+/* Initialize memory blocks */
 void initializeMemory(int totalMemory) {
     for (int i = 0; i < MAX_MEMORY_BLOCKS; i++) {
-        memory[i].base = i * MEMORY_BLOCK_SIZE;
-        memory[i].offset = MEMORY_BLOCK_SIZE;
-        memory[i].processID = -1;  // No process assigned
-        memory[i].isAllocated = false;
+        memory[i] = (MemoryBlock){.base = i * MEMORY_BLOCK_SIZE, .offset = MEMORY_BLOCK_SIZE, .processID = -1, .isAllocated = false};
     }
-    printMemoryState(stdout);  // Pass stdout for console output
+    printMemoryState(stdout);
 }
 
+/* Attempt to allocate memory */
 bool allocateMemory(int processID, int base, int offset) {
     for (int i = 0; i < MAX_MEMORY_BLOCKS; i++) {
         if (!memory[i].isAllocated && memory[i].base == base && memory[i].offset >= offset) {
             memory[i].isAllocated = true;
             memory[i].processID = processID;
-            printMemoryState(stdout);  // Pass stdout for console output
+            printMemoryState(stdout);
             return true;
         }
     }
@@ -657,11 +588,12 @@ bool allocateMemory(int processID, int base, int offset) {
     return false;
 }
 
+/* Check memory access */
 bool memoryAccess(int processID, int base, int offset) {
     for (int i = 0; i < MAX_MEMORY_BLOCKS; i++) {
         if (memory[i].isAllocated && memory[i].processID == processID &&
             memory[i].base <= base && (memory[i].base + memory[i].offset) >= (base + offset)) {
-            printMemoryState(stdout);  // Pass stdout for console output
+            printMemoryState(stdout);
             return true;
         }
     }
@@ -676,22 +608,22 @@ void clearProcessMemory(int processID) {
             memory[i].processID = -1;
         }
     }
-    printMemoryState(stdout);  // Pass stdout for console output
+    printMemoryState(stdout);
 }
 
+/* Print current memory state */
 void printMemoryState(FILE *file) {
     for (int i = 0; i < MAX_MEMORY_BLOCKS; i++) {
         fprintf(file, "%d [ %s, P#: %s, %d-%d ] %d\n", i,
                 memory[i].isAllocated ? "Used" : "Open",
-                memory[i].isAllocated ? (char[16]){ 0 } : "x",  // Fixed mismatch, using a character buffer
+                memory[i].isAllocated ? (char[16]){ 0 } : "x",
                 memory[i].base,
                 memory[i].base + memory[i].offset - 1,
                 MEMORY_BLOCK_SIZE);
     }
 }
 
-void displayMemoryState(ConfigDataType *configPtr, FILE *file, double elapsedTime, const char *message)
-{
+void displayMemoryState(ConfigDataType *configPtr, FILE *file, double elapsedTime, const char *message) {
     fprintf(file ? file : stdout, "--------------------------------------------------\n");
     fprintf(file ? file : stdout, "%s\n", message);
     printMemoryState(file ? file : stdout);
