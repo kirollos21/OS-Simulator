@@ -48,39 +48,40 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     accessTimer(ZERO_TIMER, timeStr);
     elapsedTime = 0.000000;
 
+    // Print title and initial simulation message
     printTitle(configPtr, file, elapsedTime);
-
     elapsedTime += accessTimer(LAP_TIMER, timeStr);
-    double readyTimestamp = elapsedTime;
+    fprintf(file ? file : stdout, "%1.6f, OS: Simulator start\n", elapsedTime);
 
     // Initialize all processes to READY state
     while (wkgPtrPCB != NULL)
     {
         wkgPtrPCB->currentState = READY_STATE;
-        displayProcessState(configPtr, wkgPtrPCB, readyTimestamp, file);
+        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
         wkgPtrPCB = wkgPtrPCB->nextNode;
     }
 
+    // Log initial memory state
     displayMemoryState(configPtr, file, elapsedTime, "After memory initialization");
 
+    // Reset working PCB pointer to the start of the list
     wkgPtrPCB = newPCBList;
 
     // Process loop
     while (wkgPtrPCB != NULL)
     {
-        wkgPtrPCB = getNextProcess(wkgPtrPCB, localMetaPtr);
+        // Set process to RUNNING and log state
         wkgPtrPCB->currentState = RUNNING_STATE;
-
-        elapsedTime += accessTimer(LAP_TIMER, timeStr);
-
         displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
-        
+
         // Process operations
         OpCodeType *opCode = wkgPtrPCB->mdPtr;
         while (opCode != NULL)
         {
+            // Log each operation's start
             if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "allocate") == 0)
             {
+                // Attempt memory allocation
                 if (allocateMemory(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3))
                 {
                     displayMemoryState(configPtr, file, elapsedTime, "After allocate success");
@@ -96,6 +97,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
             }
             else if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "access") == 0)
             {
+                // Attempt memory access
                 if (memoryAccess(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3))
                 {
                     displayMemoryState(configPtr, file, elapsedTime, "After access success");
@@ -111,56 +113,44 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
             }
             else
             {
+                // Log other operations
                 displayOpCode(configPtr, opCode, wkgPtrPCB, file, &elapsedTime);
             }
 
+            // Log operation end and move to next
+            elapsedTime += accessTimer(LAP_TIMER, timeStr);
             opCode = opCode->nextNode;
         }
 
+        // Check if process exited prematurely due to memory issue
         if (wkgPtrPCB->currentState != EXIT_STATE)
         {
+            // Log normal process exit
             wkgPtrPCB->currentState = EXIT_STATE;
             displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
             clearProcessMemory(wkgPtrPCB->pid);
             displayMemoryState(configPtr, file, elapsedTime, "After clear process success");
         }
 
+        // Move to next process
         wkgPtrPCB = wkgPtrPCB->nextNode;
     }
 
+    // Log simulation stop and memory clearing
     elapsedTime += accessTimer(LAP_TIMER, timeStr);
+    fprintf(file ? file : stdout, "%1.6f, OS: System stop\n", elapsedTime);
+    displayMemoryState(configPtr, file, elapsedTime, "After clear all process success");
+    fprintf(file ? file : stdout, "%1.6f, OS: Simulation end\n", elapsedTime);
 
-    if (configPtr->logToCode != LOGTO_FILE_CODE)
-    {
-        printf("%1.6f, OS: System stop\n", elapsedTime);
-    }
-
+    // Final cleanup and close file if needed
     if (file != NULL)
     {
-        fprintf(file, "%1.6f, OS: System stop\n", elapsedTime);
-        fflush(file);
-    }
-
-    elapsedTime += accessTimer(LAP_TIMER, timeStr);
-
-    if (configPtr->logToCode != LOGTO_FILE_CODE)
-    {
-        printf("%1.6f, OS: Simulation end\n", elapsedTime);
-    }
-
-    if (file != NULL)
-    {
-        fprintf(file, "%1.6f, OS: Simulation end\n", elapsedTime);
-        fflush(file);
         fclose(file);
     }
 
-    if (configPtr->logToCode != LOGTO_FILE_CODE)
-    {
-        printf("\nSimulator Program End.\n\n");
-    }
-
+    // Stop the timer
     accessTimer(STOP_TIMER, timeStr);
+    printf("\nSimulator Program End.\n\n");
 }
 
 /*
