@@ -57,7 +57,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr) {
     while (wkgPtrPCB != NULL) {
         wkgPtrPCB->currentState = RUNNING_STATE;
         displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
-        handleProcess(configPtr, wkgPtrPCB, file, elapsedTime);
+        handleProcess(configPtr, wkgPtrPCB, file, &elapsedTime);
         if (wkgPtrPCB->currentState != EXIT_STATE) {
             wkgPtrPCB->currentState = EXIT_STATE;
             displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
