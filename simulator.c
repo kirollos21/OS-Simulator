@@ -70,23 +70,24 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: None
 */
-PCB *createNewPCBNode(int pid, OpCodeType *mdPtr, ConfigDataType *configPtr) 
+PCB *createNewPCBNode(int pid, OpCodeType *mdPtr) 
 {
     // Allocate memory for the new PCB node
     PCB *newNode = (PCB *)malloc(sizeof(PCB));
-
+    //check if memory allocation failed
     if (newNode == NULL) 
     {
-        return NULL; // Handle memory allocation failure
+        // Memory allocation failed
+        return NULL;
     }
 
     // Set PCB attributes
     newNode->pid = pid;
     newNode->mdPtr = mdPtr;
-    newNode->remainingtime = 0.0; // Set initial remaining time
+    newNode->remainingtime = 0.0;
     newNode->currentState = NEW;
     newNode->nextNode = NULL;
-
+    //return new node
     return newNode;
 }
 
@@ -307,27 +308,55 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: displayToMonitor, displayToFile
 */
-void displayProcessState(ConfigDataType *config, PCB *process, FILE *outputFile) 
+void displayProcessState(ConfigDataType *config,PCB *process, FILE *outputFile)
 {
-    double currentTime = accessTimer(LAP_TIMER, NULL); // Capture current time
-    
-    while (process != NULL)
-    {
-        if (config->logToCode == LOGTO_MONITOR_CODE)
-        {
-            displayToMonitor(config, process, NEWTOREADY, currentTime);
-        }
-        else if (config->logToCode == LOGTO_FILE_CODE)
-        {
-            displayToFile(outputFile, process, config, NEWTOREADY, currentTime);
-        }
-        else if (config->logToCode == LOGTO_BOTH_CODE)
-        {
-            displayToMonitor(config, process, NEWTOREADY, currentTime);
-            displayToFile(outputFile, process, config, NEWTOREADY, currentTime);
-        }
-        process = process->nextNode;
-    }
+   //initlize function
+   double time = accessTimer(LAP_TIMER, NULL);
+
+   //compute data
+      //loop through all the processes and display
+      while(process != NULL)
+      {
+         //if the log to == monitor
+         if (config->logToCode == LOGTO_MONITOR_CODE)
+         {
+            //run monitor display
+               //function: displayToMonitor
+            displayToMonitor(config, process, NEWTOREADY, time);
+         }
+         //if the log to == file
+         else if (config->logToCode == LOGTO_FILE_CODE)
+         {
+            //run file display
+               //function: displayToFile
+            displayToFile(outputFile, process, config, NEWTOREADY, time);
+         }
+         //if the log to == BOTH
+         else if (config->logToCode == LOGTO_BOTH_CODE)
+         {
+            //run both file and monitor display
+               //function: displayToFile, displayToMonitor
+            displayToFile(outputFile, process, config, NEWTOREADY, time) ;
+            displayToMonitor(config, process, NEWTOREADY, time);
+         
+         }
+         else if (outputFile == NULL)
+         {
+            //display no output file message
+               //function: printf
+            printf("There is no output file detected.\n");
+         }
+         //otherwise
+         else
+         {
+            //print to screen error statement
+               //function: printf
+            printf("Something went wrong at PRINTING NEW TO READY\n");
+         }
+         //move to next process
+         process = process->nextNode;
+      }
+   //return nothing
 }
 
 /*
@@ -717,23 +746,53 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: displayToMonitor, displayToFile
 */
-void printOpCode(FILE *outputFile, ConfigDataType *config, PCB *process) 
+void printOpCode(FILE* outputFile, ConfigDataType *config, PCB* process)
 {
-    double currentTime = accessTimer(LAP_TIMER, NULL); // Fetch current time
-    if (config->logToCode == LOGTO_MONITOR_CODE)
-    {
-        displayToMonitor(config, process, OPDISPLAY, currentTime);
-    }
-    else if (config->logToCode == LOGTO_FILE_CODE)
-    {
-        displayToFile(outputFile, process, config, OPDISPLAY, currentTime);
-    }
-    else if (config->logToCode == LOGTO_BOTH_CODE)
-    {
-        displayToMonitor(config, process, OPDISPLAY, currentTime);
-        displayToFile(outputFile, process, config, OPDISPLAY, currentTime);
-    }
+   //initialize variables
+   char timeString[MAX_STR_LEN];
+   double time = accessTimer(LAP_TIMER, timeString);
+
+   //if the log to == monitor
+   if (config->logToCode == LOGTO_MONITOR_CODE)
+   {
+      //run monitor display
+         //function: displayToMonitor
+      displayToMonitor(config, process, OPDISPLAY, time);
+   }
+   //if the log to == file
+   else if (config->logToCode == LOGTO_FILE_CODE)
+   {
+      //run file display
+         //function: displayToFile
+      displayToFile(outputFile, process, config, OPDISPLAY, time);
+   }
+   //if the log to == BOTH
+   else if (config->logToCode == LOGTO_BOTH_CODE)
+   {
+      //run both file and monitor display
+         //function: displayToFile, displayToMonitor
+      displayToFile(outputFile, process, config, OPDISPLAY, time);
+
+      displayToMonitor(config, process, OPDISPLAY, time);
+   }
+   //if there is no output file
+   else if (outputFile == NULL)
+   {
+      //display no output file message
+         //function: printf
+      printf("There is no output file detected.\n");
+   }
+   //otherwise
+   else
+   {
+      //print to screen error statement
+         //function: printf
+      printf("Something went wrong at PRINTING IO DISPLAY\n");
+   }
+
 }
+
+
 
 /*
 Name: printReadyRunning
@@ -746,23 +805,50 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: displayToMonitor, displayToFile
 */
-void printReadyRunning(FILE *outputFile, ConfigDataType *config, PCB *process, double time) 
+void printReadyRunning(FILE* outputFile, ConfigDataType *config, 
+                                       PCB* process ,double time)
 {
-    // Fetch current time for the event
-    double currentTime = accessTimer(LAP_TIMER, NULL);
-    if (config->logToCode == LOGTO_MONITOR_CODE)
-    {
-        displayToMonitor(config, process, READYRUNNING, currentTime);
-    }
-    else if (config->logToCode == LOGTO_FILE_CODE)
-    {
-        displayToFile(outputFile, process, config, READYRUNNING, currentTime);
-    }
-    else if (config->logToCode == LOGTO_BOTH_CODE)
-    {
-        displayToMonitor(config, process, READYRUNNING, currentTime);
-        displayToFile(outputFile, process, config, READYRUNNING, currentTime);
-    }
+   //initialize variables
+
+   //if the log to == monitor
+   if (config->logToCode == LOGTO_MONITOR_CODE)
+   {
+      //run monitor display
+         //function: displayToMonitor
+      displayToMonitor(config, process, READYRUNNING, time);
+   }
+   //if the log to == file
+   else if (config->logToCode == LOGTO_FILE_CODE)
+   {
+      //run file display
+         //function: displayToFile
+      displayToFile(outputFile, process, config, READYRUNNING, time);
+   }
+   //if the log to == BOTH
+   else if (config->logToCode == LOGTO_BOTH_CODE)
+   {
+      //run both file and monitor display
+         //function: displayToFile, displayToMonitor
+      displayToFile(outputFile, process, config, READYRUNNING, time);
+
+      displayToMonitor(config, process, READYRUNNING, time);
+   }
+   //if there is no output file
+   else if (outputFile == NULL)
+   {
+      //display no output file message
+         //function: printf
+      printf("There is no output file detected.\n");
+   }
+   //otherwise
+   else
+   {
+      //print to screen error statement
+         //function: printf
+      printf("Something went wrong at PRINTING MEM INITAL\n");
+   }
+
+   //return nothing
 }
 
 /*
@@ -890,159 +976,94 @@ Device Output/Device: None
 Dependencies: createPCB_List, displayState, getNextProcess,
 displayOpCode, printTitle
 */
-void runSim( ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr )
+void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
 {
-    //initialize variables
-    double elapedTime;
+    // Initialize variables
+    double elapsedTime = 0.0;
     int processCounter = 0;
-    int totProc =0;
+    int totProc = 0;
     int atBeginning = 0;
     OpCodeType *localMetaPtr = metaDataMstrPtr;
     PCB *newPCBList = createPCB_List(configPtr, localMetaPtr, &totProc);
     PCB *wkgPCBPtr = newPCBList;
     FILE *outputFile = NULL;
 
-    accessTimer(START_TIMER, NULL);
-    //display data
-       //check if log to == file or both
-       if ( configPtr->logToCode == LOGTO_FILE_CODE 
-            || configPtr->logToCode == LOGTO_BOTH_CODE)
-       {
-         //then open file
-            //function: fopen
-         outputFile = fopen(configPtr->logToFileName, "w");
-         
-       }
-       //check if log to == file only
-       if(configPtr->logToCode==LOGTO_FILE_CODE)
-       {
-         //print file statement
-            //function: printf
-         printf("Working on printing to file...\n");
-       }
+    // Open log file if needed
+    if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
+    {
+        outputFile = fopen(configPtr->logToFileName, "w");
+        if (outputFile == NULL)
+        {
+            printf("Error: Unable to open log file\n");
+            return;
+        }
+    }
 
-       //print the title
-          //function: printTitle
-       printTitle(configPtr, wkgPCBPtr, outputFile);
+    // Log initial state and print title
+    printTitle(configPtr, wkgPCBPtr, outputFile);
 
+    // Start the simulation timer and set the initial timestamp
+    elapsedTime = accessTimer(ZERO_TIMER, NULL);
+    printStartSim(configPtr, wkgPCBPtr, elapsedTime, outputFile);
+    wkgPCBPtr->currentState = READY;
+    displayProcessState(configPtr, wkgPCBPtr, outputFile);
+    printMemInitial(configPtr, wkgPCBPtr, elapsedTime, outputFile);
 
-       // Call access timer to lap it
-          //function: getTimer, accessTimer, printStartSim, displayProcessState
-       elapedTime = accessTimer(LAP_TIMER, NULL);
-       printStartSim(configPtr, wkgPCBPtr, elapedTime, outputFile);
-       wkgPCBPtr->currentState=READY;
-       displayProcessState(configPtr,wkgPCBPtr, outputFile);
-       getTimer(wkgPCBPtr);
-
-      //print Memory intialization
-         //funciton: printMemInitial
-      printMemInitial(configPtr, wkgPCBPtr, elapedTime, outputFile);
-
-       //MASTER LOOP
-       //loop until the end of the file
-          //function: compareString
-       while( processCounter <= totProc || 
-              compareString(wkgPCBPtr->mdPtr->strArg1, "end")!=STR_EQ)
-       {
-         
-         //get the next process depending on FCFS or SJF
-         //if we are the first process
-         if (configPtr->cpuSchedCode == CPU_SCHED_SJF_N_CODE && 
-            processCounter == atBeginning)
-          {
-            
-            //use get Next Process to find the shortest job
-               //function: getNextProcess
+    // MASTER LOOP
+    while (processCounter <= totProc || compareString(wkgPCBPtr->mdPtr->strArg1, "end") != STR_EQ)
+    {
+        // Get the next process based on CPU scheduling type
+        if (configPtr->cpuSchedCode == CPU_SCHED_SJF_N_CODE && processCounter == atBeginning)
+        {
             wkgPCBPtr = getNextProcess(configPtr->cpuSchedCode, wkgPCBPtr);
+        }
+        else if (processCounter != atBeginning)
+        {
+            wkgPCBPtr = getNextProcess(configPtr->cpuSchedCode, newPCBList);
+        }
 
-          }
-          //otherwise if we are not at the beginning
-          else if (processCounter != atBeginning)
-          {
-            //use get Next Process to find the shortest job
-               //function: getNextProcess
-            wkgPCBPtr= getNextProcess(configPtr->cpuSchedCode, newPCBList);
-          }
+        // Increment process counter and set process state
+        processCounter++;
+        wkgPCBPtr->currentState = RUNNING;
 
-            //increment process counter
-            processCounter++;
-            //set the state to running
-            wkgPCBPtr->currentState=RUNNING;
+        // Update and log elapsed time for process selection and transition to RUNNING
+        elapsedTime += accessTimer(LAP_TIMER, NULL);
+        printReadyRunning(outputFile, configPtr, wkgPCBPtr, elapsedTime);
 
-            //get timer
-               //function: accessTimer
-            elapedTime = accessTimer(LAP_TIMER, NULL);
-            //display selected process
-               //function: printReadyRunning
-            printReadyRunning(outputFile, configPtr, wkgPCBPtr ,elapedTime);
+        // Process each operation
+        while (compareString(wkgPCBPtr->mdPtr->command, "app") != STR_EQ || compareString(wkgPCBPtr->mdPtr->strArg1, "end") != STR_EQ)
+        {
+            // Update elapsed time before each operation
+            elapsedTime += accessTimer(LAP_TIMER, NULL);
 
-            //get the OP code in the process
-               //function: compareString
-            //while the command is not app and the strArg1 is not end
-            while(compareString(wkgPCBPtr->mdPtr->command, "app")!=STR_EQ||
-                  compareString(wkgPCBPtr->mdPtr->strArg1, "end")!= STR_EQ)
+            // Log I/O operations and handle memory if needed
+            printOpCode(outputFile, configPtr, wkgPCBPtr);
+            if (compareString(wkgPCBPtr->mdPtr->command, "mem") == STR_EQ)
             {
-               //get timer
-                  //function: accessTimer
-               elapedTime = accessTimer(LAP_TIMER, NULL); 
-               //then display IO
-                  //function: printOpCode
-               printOpCode( outputFile, configPtr, wkgPCBPtr);
-               //if the command is mem
-                  //function: compareString
-               if(compareString(wkgPCBPtr->mdPtr->command, "mem")==STR_EQ)
-               {
-                  //then display memory
-                     //function: displayMem
-                  displayMem(wkgPCBPtr, configPtr, outputFile);
-               }
-               //MOVE TO NEXT NODE
-               wkgPCBPtr->mdPtr= wkgPCBPtr->mdPtr->nextNode;
+                displayMem(wkgPCBPtr, configPtr, outputFile);
             }
-            //remove the process from the list
-            wkgPCBPtr->currentState=EXITING;
-            //get timer
-               //function: accessTimer
-            elapedTime = accessTimer(LAP_TIMER, NULL);
-            //display process state
-               //function: displayProcessState
-            if (configPtr->logToCode==LOGTO_MONITOR_CODE || 
-                configPtr->logToCode==LOGTO_BOTH_CODE)
-            {
-               //then display to monitor
-                  //function: printf
-               printf("%1.6f, OS: Process %d set in EXIT state\n", 
-                                          elapedTime, wkgPCBPtr->pid);
-            }
-            if(configPtr->logToCode==LOGTO_FILE_CODE || 
-               configPtr->logToCode==LOGTO_BOTH_CODE)
-            {
-               //then display to file
-                  //function: fprintf
-               fprintf(outputFile,"%1.6f, OS: Process %d set in EXIT state\n",
-               elapedTime, wkgPCBPtr->pid);
-            }
-       //end MASTER LOOP
-       }
-       
-       //check if log to == file or both
-       if(configPtr->logToCode==LOGTO_FILE_CODE || 
-                                      configPtr->logToCode==LOGTO_BOTH_CODE)
-       {
-         //print file statement
-            //function: fprintf
-         fprintf(outputFile,"%1.6f, OS: Simulator End\n", elapedTime);
-         //then close file
-             //functin: fclose
-         fclose(outputFile);
-       }
-       //otherwise
-       else
-       {
-         //print to screen statement
-            //function: printf
-         printf("%1.6f, OS: Simulator End\n", elapedTime);
-       }
-    //end function
-       //return nothing
+
+            // Move to the next operation node
+            wkgPCBPtr->mdPtr = wkgPCBPtr->mdPtr->nextNode;
+        }
+
+        // Set the process to EXITING state and log final elapsed time for process
+        wkgPCBPtr->currentState = EXITING;
+        elapsedTime += accessTimer(LAP_TIMER, NULL);
+        displayProcessState(configPtr, wkgPCBPtr, outputFile);
+
+        // End of MASTER LOOP
+    }
+
+    // Log the end of the simulation
+    elapsedTime += accessTimer(LAP_TIMER, NULL);
+    if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
+    {
+        fprintf(outputFile, "%1.6f, OS: Simulator End\n", elapsedTime);
+        fclose(outputFile);
+    }
+    else
+    {
+        printf("%1.6f, OS: Simulator End\n", elapsedTime);
+    }
 }
