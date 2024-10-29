@@ -70,24 +70,23 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: None
 */
-PCB *createNewPCBNode(int pid, OpCodeType *mdPtr) 
+PCB *createNewPCBNode(int pid, OpCodeType *mdPtr, ConfigDataType *configPtr) 
 {
     // Allocate memory for the new PCB node
     PCB *newNode = (PCB *)malloc(sizeof(PCB));
-    //check if memory allocation failed
+
     if (newNode == NULL) 
     {
-        // Memory allocation failed
-        return NULL;
+        return NULL; // Handle memory allocation failure
     }
 
     // Set PCB attributes
     newNode->pid = pid;
     newNode->mdPtr = mdPtr;
-    newNode->remainingtime = 0.0;
+    newNode->remainingtime = calculateRemainingTime(newNode, configPtr); // Set initial remaining time
     newNode->currentState = NEW;
     newNode->nextNode = NULL;
-    //return new node
+
     return newNode;
 }
 
@@ -976,160 +975,81 @@ Device Output/Device: None
 Dependencies: createPCB_List, displayState, getNextProcess,
 displayOpCode, printTitle
 */
-void runSim( ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr )
+void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr) 
 {
-    //initialize variables
-    double elapedTime;
+    // Initialize variables
+    double elapsedTime;
     int processCounter = 0;
-    int totProc =0;
-    int atBeginning = 0;
+    int totalProcesses = 0;
     OpCodeType *localMetaPtr = metaDataMstrPtr;
-    PCB *newPCBList = createPCB_List(configPtr, localMetaPtr, &totProc);
-    PCB *wkgPCBPtr = newPCBList;
+    PCB *pcbList = createPCB_List(configPtr, localMetaPtr, &totalProcesses);
+    PCB *currentPCB = pcbList;
     FILE *outputFile = NULL;
 
-    //display data
-       //check if log to == file or both
-       if ( configPtr->logToCode == LOGTO_FILE_CODE 
-            || configPtr->logToCode == LOGTO_BOTH_CODE)
-       {
-         //then open file
-            //function: fopen
-         outputFile = fopen(configPtr->logToFileName, "w");
-         
-       }
-       //check if log to == file only
-       if(configPtr->logToCode==LOGTO_FILE_CODE)
-       {
-         //print file statement
-            //function: printf
-         printf("Working on printing to file...\n");
-       }
+    // Open log file if needed
+    if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE) 
+    {
+        outputFile = fopen(configPtr->logToFileName, "w");
+    }
 
-       //print the title
-          //function: printTitle
-       printTitle(configPtr, wkgPCBPtr, outputFile);
+    // Print the title and start simulation
+    printTitle(configPtr, outputFile);
+    elapsedTime = accessTimer(LAP_TIMER, NULL);
+    printStartSim(configPtr, elapsedTime, outputFile);
 
+    // Main simulation loop for each process
+    while (processCounter < totalProcesses) 
+    {
+        // Select next process based on scheduling algorithm (SJF or FCFS)
+        currentPCB = getNextProcess(configPtr->cpuSchedCode, currentPCB);
 
-       // Call access timer to lap it
-          //function: getTimer, accessTimer, printStartSim, displayProcessState
-       elapedTime = accessTimer(LAP_TIMER, NULL);
-       printStartSim(configPtr, wkgPCBPtr, elapedTime, outputFile);
-       wkgPCBPtr->currentState=READY;
-       displayProcessState(configPtr,wkgPCBPtr, outputFile);
-       getTimer(wkgPCBPtr);
+        // Set the process to RUNNING and print the transition
+        currentPCB->currentState = RUNNING;
+        elapsedTime = accessTimer(LAP_TIMER, NULL);
+        printProcessTransition("READY", "RUNNING", currentPCB->pid, elapsedTime, outputFile);
 
-      //print Memory intialization
-         //funciton: printMemInitial
-      printMemInitial(configPtr, wkgPCBPtr, elapedTime, outputFile);
-
-       //MASTER LOOP
-       //loop until the end of the file
-          //function: compareString
-       while( processCounter <= totProc || 
-              compareString(wkgPCBPtr->mdPtr->strArg1, "end")!=STR_EQ)
-       {
-         
-         //get the next process depending on FCFS or SJF
-         //if we are the first process
-         if (configPtr->cpuSchedCode == CPU_SCHED_SJF_N_CODE && 
-            processCounter == atBeginning)
-          {
-            
-            //use get Next Process to find the shortest job
-               //function: getNextProcess
-            wkgPCBPtr = getNextProcess(configPtr->cpuSchedCode, wkgPCBPtr);
-
-          }
-          //otherwise if we are not at the beginning
-          else if (processCounter != atBeginning)
-          {
-            //use get Next Process to find the shortest job
-               //function: getNextProcess
-            wkgPCBPtr= getNextProcess(configPtr->cpuSchedCode, newPCBList);
-          }
-
-            //increment process counter
-            processCounter++;
-            //set the state to running
-            wkgPCBPtr->currentState=RUNNING;
-
-            //get timer
-               //function: accessTimer
-            elapedTime = accessTimer(LAP_TIMER, NULL);
-            //display selected process
-               //function: printReadyRunning
-            printReadyRunning(outputFile, configPtr, wkgPCBPtr ,elapedTime);
-
-            //get the OP code in the process
-               //function: compareString
-            //while the command is not app and the strArg1 is not end
-            while(compareString(wkgPCBPtr->mdPtr->command, "app")!=STR_EQ||
-                  compareString(wkgPCBPtr->mdPtr->strArg1, "end")!= STR_EQ)
+        // Iterate through operations in the process
+        while (currentPCB->mdPtr != NULL && compareString(currentPCB->mdPtr->strArg1, "end") != STR_EQ) 
+        {
+            // Increment time based on operation type and configuration
+            if (compareString(currentPCB->mdPtr->command, "cpu") == STR_EQ) 
             {
-               //get timer
-                  //function: accessTimer
-               elapedTime = accessTimer(LAP_TIMER, NULL); 
-               //then display IO
-                  //function: printOpCode
-               printOpCode( outputFile, configPtr, wkgPCBPtr);
-               //if the command is mem
-                  //function: compareString
-               if(compareString(wkgPCBPtr->mdPtr->command, "mem")==STR_EQ)
-               {
-                  //then display memory
-                     //function: displayMem
-                  displayMem(wkgPCBPtr, configPtr, outputFile);
-               }
-               //MOVE TO NEXT NODE
-               wkgPCBPtr->mdPtr= wkgPCBPtr->mdPtr->nextNode;
+                elapsedTime += configPtr->procCycleRate;
+                printOperation("CPU", "process operation", currentPCB->pid, elapsedTime, outputFile);
             }
-            //remove the process from the list
-            wkgPCBPtr->currentState=EXITING;
-            //get timer
-               //function: accessTimer
-            elapedTime = accessTimer(LAP_TIMER, NULL);
-            //display process state
-               //function: displayProcessState
-            if (configPtr->logToCode==LOGTO_MONITOR_CODE || 
-                configPtr->logToCode==LOGTO_BOTH_CODE)
+            else if (compareString(currentPCB->mdPtr->command, "mem") == STR_EQ) 
             {
-               //then display to monitor
-                  //function: printf
-               printf("%1.6f, OS: Process %d set in EXIT state\n", 
-                                          elapedTime, wkgPCBPtr->pid);
+                // Memory operation
+                handleMemoryOperation(currentPCB, configPtr, outputFile);
+                displayMem(currentPCB, configPtr, outputFile);
+                elapsedTime += configPtr->memCycleRate;
             }
-            if(configPtr->logToCode==LOGTO_FILE_CODE || 
-               configPtr->logToCode==LOGTO_BOTH_CODE)
+            else if (compareString(currentPCB->mdPtr->command, "dev") == STR_EQ) 
             {
-               //then display to file
-                  //function: fprintf
-               fprintf(outputFile,"%1.6f, OS: Process %d set in EXIT state\n",
-               elapedTime, wkgPCBPtr->pid);
+                // I/O operation based on device type (input/output)
+                handleIOOperation(currentPCB, configPtr, outputFile);
+                elapsedTime += configPtr->ioCycleRate;
             }
-       //end MASTER LOOP
-       }
-       
-       //check if log to == file or both
-       if(configPtr->logToCode==LOGTO_FILE_CODE || 
-                                      configPtr->logToCode==LOGTO_BOTH_CODE)
-       {
-         //print file statement
-            //function: fprintf
-         fprintf(outputFile,"%1.6f, OS: Simulator End\n", elapedTime);
-         //then close file
-             //functin: fclose
-         fclose(outputFile);
-       }
-       //otherwise
-       else
-       {
-         //print to screen statement
-            //function: printf
-         printf("%1.6f, OS: Simulator End\n", elapedTime);
-       }
-    //end function
-       //return nothing
+
+            // Move to the next operation in metadata
+            currentPCB->mdPtr = currentPCB->mdPtr->nextNode;
+        }
+
+        // Set the process to EXIT state after all operations
+        currentPCB->currentState = EXIT;
+        elapsedTime = accessTimer(LAP_TIMER, NULL);
+        printProcessTransition("RUNNING", "EXIT", currentPCB->pid, elapsedTime, outputFile);
+
+        // Move to the next process
+        processCounter++;
+    }
+
+    // Print simulation end
+    printEndSim(configPtr, outputFile);
+
+    // Close output file if opened
+    if (outputFile != NULL) 
+    {
+        fclose(outputFile);
+    }
 }
-
-
