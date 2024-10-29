@@ -30,10 +30,10 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     PCB *newPCBList = createPCB_List(configPtr, localMetaPtr);
     PCB *wkgPtrPCB = newPCBList;
     char timeStr[10];
-    double elapsedTime = 0.0;   // Global elapsed time tracker
+    double elapsedTime = 0.0;
     FILE *file = NULL;
 
-    // Open the log file if logging to a file is required
+    // Open log file if needed
     if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
     {
         file = fopen(configPtr->logToFileName, "w");
@@ -44,76 +44,50 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         }
     }
 
-    // Start the simulation timer and ensure the first timestamp is 0.000000
+    // Start simulation timer
     accessTimer(ZERO_TIMER, timeStr);
-    elapsedTime = 0.000000;  // Set the initial time to zero explicitly
+    elapsedTime = 0.000000;
 
-    // Print the title
     printTitle(configPtr, file, elapsedTime);
 
-    // Immediately update elapsed time after timer starts for accurate state transitions
     elapsedTime += accessTimer(LAP_TIMER, timeStr);
-
-    // Store a constant timestamp for the READY state transitions
     double readyTimestamp = elapsedTime;
 
-    // Loop through the PCB list and set each process to READY state with the same timestamp
+    // Initialize all processes to READY state
     while (wkgPtrPCB != NULL)
     {
         wkgPtrPCB->currentState = READY_STATE;
-
-        // Log the state transition for each process with the same timestamp
         displayProcessState(configPtr, wkgPtrPCB, readyTimestamp, file);
-
-        // Move to the next process in the list
         wkgPtrPCB = wkgPtrPCB->nextNode;
     }
 
-    // Reset working PCB pointer to the start of the list
+    displayMemoryState(configPtr, file, elapsedTime, "After memory initialization");
+
     wkgPtrPCB = newPCBList;
 
-    // Loop through all the processes for execution
+    // Process loop
     while (wkgPtrPCB != NULL)
     {
-        // Get the next process
         wkgPtrPCB = getNextProcess(wkgPtrPCB, localMetaPtr);
-
-        // Set process state to RUNNING
         wkgPtrPCB->currentState = RUNNING_STATE;
 
-        // Update elapsed time before logging
-        elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Accumulate global time
+        elapsedTime += accessTimer(LAP_TIMER, timeStr);
 
-        // Print process selection and transition to running state
-        if (configPtr->logToCode != LOGTO_FILE_CODE)
-        {
-            printf("%1.6f, OS: Process %d selected with %d ms remaining\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->time);
-            printf("%1.6f, OS: Process %d set from READY to RUNNING\n", elapsedTime, wkgPtrPCB->pid);
-            printf("\n");
-        }
-
-        if (file != NULL)
-        {
-            fprintf(file, "%1.6f, OS: Process %d selected with %d ms remaining\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->time);
-            fprintf(file, "%1.6f, OS: Process %d set from READY to RUNNING\n", elapsedTime, wkgPtrPCB->pid);
-            fprintf(file, "\n");
-        }
-
-        // Process each operation in the metadata
+        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
+        
+        // Process operations
         OpCodeType *opCode = wkgPtrPCB->mdPtr;
         while (opCode != NULL)
         {
-            // Check the operation type and handle memory operations
             if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "allocate") == 0)
             {
-                // Attempt memory allocation
                 if (allocateMemory(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3))
                 {
-                    displayMemoryState(configPtr, file, elapsedTime, "successful mem allocate request");
+                    displayMemoryState(configPtr, file, elapsedTime, "After allocate success");
                 }
                 else
                 {
-                    displayMemoryState(configPtr, file, elapsedTime, "failed mem allocate request");
+                    displayMemoryState(configPtr, file, elapsedTime, "After allocate failure");
                     wkgPtrPCB->currentState = EXIT_STATE;
                     displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
                     clearProcessMemory(wkgPtrPCB->pid);
@@ -122,14 +96,13 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
             }
             else if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "access") == 0)
             {
-                // Attempt memory access
                 if (memoryAccess(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3))
                 {
-                    displayMemoryState(configPtr, file, elapsedTime, "successful mem access request");
+                    displayMemoryState(configPtr, file, elapsedTime, "After access success");
                 }
                 else
                 {
-                    displayMemoryState(configPtr, file, elapsedTime, "failed mem access request - segmentation fault");
+                    displayMemoryState(configPtr, file, elapsedTime, "After access failure");
                     wkgPtrPCB->currentState = EXIT_STATE;
                     displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
                     clearProcessMemory(wkgPtrPCB->pid);
@@ -138,29 +111,24 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
             }
             else
             {
-                // Handle other operations (e.g., CPU and I/O) as before
                 displayOpCode(configPtr, opCode, wkgPtrPCB, file, &elapsedTime);
             }
 
-            // Move to the next operation
             opCode = opCode->nextNode;
         }
 
-        // Check if process has exited due to segmentation fault; skip setting exit state if so
         if (wkgPtrPCB->currentState != EXIT_STATE)
         {
-            // Set process state to EXIT and log
             wkgPtrPCB->currentState = EXIT_STATE;
             displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
-            clearProcessMemory(wkgPtrPCB->pid);  // Clear memory on normal exit
+            clearProcessMemory(wkgPtrPCB->pid);
+            displayMemoryState(configPtr, file, elapsedTime, "After clear process success");
         }
 
-        // Move to the next process
         wkgPtrPCB = wkgPtrPCB->nextNode;
     }
 
-    // Print the system stop message
-    elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Final time accumulation
+    elapsedTime += accessTimer(LAP_TIMER, timeStr);
 
     if (configPtr->logToCode != LOGTO_FILE_CODE)
     {
@@ -173,7 +141,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         fflush(file);
     }
 
-    elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Accumulate time again
+    elapsedTime += accessTimer(LAP_TIMER, timeStr);
 
     if (configPtr->logToCode != LOGTO_FILE_CODE)
     {
@@ -192,10 +160,8 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         printf("\nSimulator Program End.\n\n");
     }
 
-    // Stop the timer
     accessTimer(STOP_TIMER, timeStr);
 }
-
 
 /*
 Name: createNewNode
