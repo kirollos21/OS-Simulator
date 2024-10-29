@@ -999,20 +999,33 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         }
     }
 
-    // Log initial state and print title
+    // Display file statement if logging to file
+    if (configPtr->logToCode == LOGTO_FILE_CODE)
+    {
+        printf("Working on printing to file...\n");
+    }
+
+    // Print the title
     printTitle(configPtr, wkgPCBPtr, outputFile);
 
-    // Start the simulation timer and set the initial timestamp
-    elapsedTime = accessTimer(ZERO_TIMER, NULL);
+    // Initialize simulation timer
+    accessTimer(ZERO_TIMER, NULL);  // Set the initial time to 0.000000
+    elapsedTime = 0.000000;
+
+    // Print start of simulation and update the initial READY state
+    elapsedTime += accessTimer(LAP_TIMER, NULL);
     printStartSim(configPtr, wkgPCBPtr, elapsedTime, outputFile);
     wkgPCBPtr->currentState = READY;
     displayProcessState(configPtr, wkgPCBPtr, outputFile);
+    getTimer(wkgPCBPtr);
+
+    // Print memory initialization
     printMemInitial(configPtr, wkgPCBPtr, elapsedTime, outputFile);
 
     // MASTER LOOP
     while (processCounter <= totProc || compareString(wkgPCBPtr->mdPtr->strArg1, "end") != STR_EQ)
     {
-        // Get the next process based on CPU scheduling type
+        // Get the next process based on CPU scheduling (FCFS or SJF)
         if (configPtr->cpuSchedCode == CPU_SCHED_SJF_N_CODE && processCounter == atBeginning)
         {
             wkgPCBPtr = getNextProcess(configPtr->cpuSchedCode, wkgPCBPtr);
@@ -1022,22 +1035,22 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
             wkgPCBPtr = getNextProcess(configPtr->cpuSchedCode, newPCBList);
         }
 
-        // Increment process counter and set process state
+        // Increment process counter and update state to RUNNING
         processCounter++;
         wkgPCBPtr->currentState = RUNNING;
 
-        // Update and log elapsed time for process selection and transition to RUNNING
+        // Update and log elapsed time for selected process transition to RUNNING
         elapsedTime += accessTimer(LAP_TIMER, NULL);
         printReadyRunning(outputFile, configPtr, wkgPCBPtr, elapsedTime);
 
-        // Process each operation
+        // Process each operation within the selected process
         while (compareString(wkgPCBPtr->mdPtr->command, "app") != STR_EQ || compareString(wkgPCBPtr->mdPtr->strArg1, "end") != STR_EQ)
         {
-            // Update elapsed time before each operation
+            // Update and log elapsed time for each operation
             elapsedTime += accessTimer(LAP_TIMER, NULL);
-
-            // Log I/O operations and handle memory if needed
             printOpCode(outputFile, configPtr, wkgPCBPtr);
+
+            // Handle memory operations if specified
             if (compareString(wkgPCBPtr->mdPtr->command, "mem") == STR_EQ)
             {
                 displayMem(wkgPCBPtr, configPtr, outputFile);
@@ -1047,15 +1060,23 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
             wkgPCBPtr->mdPtr = wkgPCBPtr->mdPtr->nextNode;
         }
 
-        // Set the process to EXITING state and log final elapsed time for process
+        // Update and log elapsed time for process exit transition
         wkgPCBPtr->currentState = EXITING;
         elapsedTime += accessTimer(LAP_TIMER, NULL);
         displayProcessState(configPtr, wkgPCBPtr, outputFile);
 
-        // End of MASTER LOOP
-    }
+        // Log to monitor or file as configured
+        if (configPtr->logToCode == LOGTO_MONITOR_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
+        {
+            printf("%1.6f, OS: Process %d set in EXIT state\n", elapsedTime, wkgPCBPtr->pid);
+        }
+        if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
+        {
+            fprintf(outputFile, "%1.6f, OS: Process %d set in EXIT state\n", elapsedTime, wkgPCBPtr->pid);
+        }
+    } // End MASTER LOOP
 
-    // Log the end of the simulation
+    // Log simulation end message
     elapsedTime += accessTimer(LAP_TIMER, NULL);
     if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
     {
