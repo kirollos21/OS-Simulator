@@ -151,4 +151,6 @@ void printMemoryState(FILE *file);
 
 void displayMemoryState(ConfigDataType *configPtr, FILE *file, double elapsedTime, const char *message);
 
+void handleProcess(ConfigDataType *configPtr, PCB *wkgPtrPCB, FILE *file, double *elapsedTime);
+
 #endif

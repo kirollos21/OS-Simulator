@@ -629,3 +629,62 @@ void displayMemoryState(ConfigDataType *configPtr, FILE *file, double elapsedTim
     printMemoryState(file ? file : stdout);
     fprintf(file ? file : stdout, "--------------------------------------------------\n");
 }
+
+void handleProcess(ConfigDataType *configPtr, PCB *wkgPtrPCB, FILE *file, double *elapsedTime) {
+    char timeStr[10];
+    OpCodeType *opCode = wkgPtrPCB->mdPtr;
+
+    while (opCode != NULL) {
+        // Handle memory allocation
+        if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "allocate") == 0) {
+            fprintf(file ? file : stdout, "%1.6f, Process: %d, mem allocate request (%d, %d)\n", 
+                    *elapsedTime, wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3);
+
+            if (allocateMemory(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3)) {
+                displayMemoryState(configPtr, file, *elapsedTime, "After allocate success");
+                fprintf(file ? file : stdout, "%1.6f, Process: %d, successful mem allocate request\n", *elapsedTime, wkgPtrPCB->pid);
+            } else {
+                displayMemoryState(configPtr, file, *elapsedTime, "After allocate failure");
+                fprintf(file ? file : stdout, "%1.6f, Process: %d, failed mem allocate request\n", *elapsedTime, wkgPtrPCB->pid);
+                wkgPtrPCB->currentState = EXIT_STATE;
+                displayProcessState(configPtr, wkgPtrPCB, *elapsedTime, file);
+                clearProcessMemory(wkgPtrPCB->pid);
+                break;
+            }
+        }
+        // Handle memory access
+        else if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "access") == 0) {
+            fprintf(file ? file : stdout, "%1.6f, Process: %d, mem access request (%d, %d)\n", 
+                    *elapsedTime, wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3);
+
+            if (memoryAccess(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3)) {
+                displayMemoryState(configPtr, file, *elapsedTime, "After access success");
+                fprintf(file ? file : stdout, "%1.6f, Process: %d, successful mem access request\n", *elapsedTime, wkgPtrPCB->pid);
+            } else {
+                displayMemoryState(configPtr, file, *elapsedTime, "After access failure");
+                fprintf(file ? file : stdout, "%1.6f, Process: %d, failed mem access request\n", *elapsedTime, wkgPtrPCB->pid);
+                fprintf(file ? file : stdout, "%1.6f, OS: Segmentation fault, Process %d ended\n", *elapsedTime, wkgPtrPCB->pid);
+                wkgPtrPCB->currentState = EXIT_STATE;
+                displayProcessState(configPtr, wkgPtrPCB, *elapsedTime, file);
+                clearProcessMemory(wkgPtrPCB->pid);
+                break;
+            }
+        }
+        // Handle CPU or I/O operations
+        else {
+            displayOpCode(configPtr, opCode, wkgPtrPCB, file, elapsedTime);
+        }
+
+        // Update elapsed time and move to the next operation
+        *elapsedTime += accessTimer(LAP_TIMER, timeStr);
+        opCode = opCode->nextNode;
+    }
+
+    // Finalize process state if not in EXIT_STATE
+    if (wkgPtrPCB->currentState != EXIT_STATE) {
+        wkgPtrPCB->currentState = EXIT_STATE;
+        displayProcessState(configPtr, wkgPtrPCB, *elapsedTime, file);
+        clearProcessMemory(wkgPtrPCB->pid);
+        displayMemoryState(configPtr, file, *elapsedTime, "After clear process success");
+    }
+}
