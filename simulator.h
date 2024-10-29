@@ -149,4 +149,6 @@ void clearProcessMemory(int processID);
 
 void printMemoryState();
 
+void displayMemoryState(ConfigDataType *configPtr, FILE *file, double elapsedTime, const char *message);
+
 #endif

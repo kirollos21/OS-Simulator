@@ -5,16 +5,23 @@
 
 #include "simulator.h"
 
+#define MAX_MEMORY_BLOCKS 100  // Adjust size as needed
+#define MEMORY_BLOCK_SIZE 1024 // Block size in KB or as needed
+
+MemoryBlock memory[MAX_MEMORY_BLOCKS]; // Declare the memory array globally
+
 /*
 Name: runSim
-process: primary simulation driver
-Function Input/Parameters:  configuration data (ConfigDataType *),
-                            metadata (OpCodeType *)
+Process: primary simulation driver
+Function Input/Parameters: configuration data (ConfigDataType *),
+                           metadata (OpCodeType *)
 Function Output/Parameters: none
 Function Output/Returned: none
 Device Input/device: none
 Device Output/device: none
-Dependencies: tbd
+Dependencies: createPCB_List, accessTimer, displayProcessState, 
+              allocateMemory, memoryAccess, clearProcessMemory, 
+              displayOpCode, displayMemoryState
 */
 void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
 {
@@ -50,7 +57,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
     // Store a constant timestamp for the READY state transitions
     double readyTimestamp = elapsedTime;
 
-    // Loop through the PCB list and set to READY state, using the same timestamp for all processes
+    // Loop through the PCB list and set each process to READY state with the same timestamp
     while (wkgPtrPCB != NULL)
     {
         wkgPtrPCB->currentState = READY_STATE;
@@ -97,10 +104,10 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
         while (opCode != NULL)
         {
             // Check the operation type and handle memory operations
-            if (opCode->opLtr == 'A' && strcmp(opCode->opName, "allocate") == 0)
+            if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "allocate") == 0)
             {
                 // Attempt memory allocation
-                if (allocateMemory(wkgPtrPCB->pid, opCode->opValue1, opCode->opValue2))
+                if (allocateMemory(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3))
                 {
                     displayMemoryState(configPtr, file, elapsedTime, "successful mem allocate request");
                 }
@@ -113,10 +120,10 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
                     break;
                 }
             }
-            else if (opCode->opLtr == 'A' && strcmp(opCode->opName, "access") == 0)
+            else if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "access") == 0)
             {
                 // Attempt memory access
-                if (memoryAccess(wkgPtrPCB->pid, opCode->opValue1, opCode->opValue2))
+                if (memoryAccess(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3))
                 {
                     displayMemoryState(configPtr, file, elapsedTime, "successful mem access request");
                 }
@@ -136,7 +143,7 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
             }
 
             // Move to the next operation
-            opCode = opCode->next;
+            opCode = opCode->nextNode;
         }
 
         // Check if process has exited due to segmentation fault; skip setting exit state if so
@@ -737,4 +744,11 @@ void printMemoryState() {
                MEMORY_BLOCK_SIZE);
     }
     printf("--------------------------------------------------\n");
+}
+
+void displayMemoryState(ConfigDataType *configPtr, FILE *file, double elapsedTime, const char *message) {
+    printf("%1.6f, %s\n", elapsedTime, message);
+    if (file != NULL) {
+        fprintf(file, "%1.6f, %s\n", elapsedTime, message);
+    }
 }
