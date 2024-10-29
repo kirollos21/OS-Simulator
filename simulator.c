@@ -635,15 +635,13 @@ void printTitle(ConfigDataType *config, FILE* fileName, double time)
 }
 
 void initializeMemory(int totalMemory) {
-    // Initialize memory blocks as open, with totalMemory defining the size.
     for (int i = 0; i < MAX_MEMORY_BLOCKS; i++) {
         memory[i].base = i * MEMORY_BLOCK_SIZE;
         memory[i].offset = MEMORY_BLOCK_SIZE;
         memory[i].processID = -1;  // No process assigned
         memory[i].isAllocated = false;
     }
-    // Print initial memory layout
-    printMemoryState();
+    printMemoryState(stdout);  // Pass stdout for console output
 }
 
 bool allocateMemory(int processID, int base, int offset) {
@@ -651,7 +649,7 @@ bool allocateMemory(int processID, int base, int offset) {
         if (!memory[i].isAllocated && memory[i].base == base && memory[i].offset >= offset) {
             memory[i].isAllocated = true;
             memory[i].processID = processID;
-            printMemoryState();
+            printMemoryState(stdout);  // Pass stdout for console output
             return true;
         }
     }
@@ -663,7 +661,7 @@ bool memoryAccess(int processID, int base, int offset) {
     for (int i = 0; i < MAX_MEMORY_BLOCKS; i++) {
         if (memory[i].isAllocated && memory[i].processID == processID &&
             memory[i].base <= base && (memory[i].base + memory[i].offset) >= (base + offset)) {
-            printMemoryState();
+            printMemoryState(stdout);  // Pass stdout for console output
             return true;
         }
     }
@@ -678,16 +676,14 @@ void clearProcessMemory(int processID) {
             memory[i].processID = -1;
         }
     }
-    printMemoryState();
+    printMemoryState(stdout);  // Pass stdout for console output
 }
 
-void printMemoryState(FILE *file)
-{
-    for (int i = 0; i < MAX_MEMORY_BLOCKS; i++)
-    {
+void printMemoryState(FILE *file) {
+    for (int i = 0; i < MAX_MEMORY_BLOCKS; i++) {
         fprintf(file, "%d [ %s, P#: %s, %d-%d ] %d\n", i,
                 memory[i].isAllocated ? "Used" : "Open",
-                memory[i].isAllocated ? memory[i].processID : "x",
+                memory[i].isAllocated ? (char[16]){ 0 } : "x",  // Fixed mismatch, using a character buffer
                 memory[i].base,
                 memory[i].base + memory[i].offset - 1,
                 MEMORY_BLOCK_SIZE);
