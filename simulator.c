@@ -748,7 +748,13 @@ Dependencies: displayToMonitor, displayToFile
 */
 void printOpCode(FILE* outputFile, ConfigDataType *config, PCB* process)
 {
-   //initialize variables
+   // Check if process->mdPtr is NULL to avoid segmentation faults
+   if (process->mdPtr == NULL) {
+       printf("Error: Metadata pointer (mdPtr) is NULL for process %d.\n", process->pid);
+       return; // Exit the function if mdPtr is NULL
+   }
+
+   // Initialize variables
    char timeString[MAX_STR_LEN];
    double time = accessTimer(LAP_TIMER, timeString);
 
