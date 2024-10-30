@@ -56,16 +56,28 @@ typedef enum {
 
 typedef struct PCB
 {
-    int pid;                    // Process ID
-    int time;                   // Remaining time for the process
-    ProcessState currentState;  // Current state of the process
-    OpCodeType *mdPtr;          // Pointer to the metadata operation
-    struct PCB *nextNode;       // Pointer to the next PCB in the list
-    int baseAddress;            // Base address of allocated memory
-    int offset;                 // Offset of allocated memory
-    bool memoryAllocated;       // Flag indicating if memory is allocated for this process
+    int pid;
+    int time;
+    ProcessState currentState;
+    OpCodeType *mdPtr;
+    struct PCB *nextNode;
 
-} PCB;
+}PCB;
 
+typedef enum
+{
+    NOVALUE,
+    TITLE,
+    SIMSTART,
+    NEWTOREADY,
+    MEMINTIAL,
+    READYRUNNING,
+    OPDISPLAY
+}DISPLAY;
+
+typedef struct {
+    pthread_mutex_t lock;
+    int lap;
+} TimerData;
 
 #endif

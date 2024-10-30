@@ -14,14 +14,6 @@
 #include <pthread.h>
 #include <stdio.h>
 
-typedef struct {
-    int base;
-    int offset;
-    int processID;
-    bool isAllocated;
-} MemoryBlock;
-
-
 /*
 Name: runSim
 process: primary simulation driver
@@ -36,17 +28,17 @@ Dependencies: tbd
 void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr);
 
 /*
-Name: createNewNode
-Process: Allocates memory for a new PCB node and initializes
-its nextNode pointer to NULL
-Function Input/Parameters: pointer to an existing PCB node
-Function Output/Parameters: Newly created PCB node pointer
+Name: createNewPCBNode
+Process: Creates a NEW_STATE PCB node with specified process ID 
+and metadata pointer
+Function Input/Parameters: Process ID, pointer to metadata
+Function Output/Parameters: None
 Function Output/Returned: Newly created PCB node pointer
 Device Input/File: None
 Device Output/Device: None
 Dependencies: None
 */
-PCB *createNewNode(PCB *pointer);
+PCB *createNewPCBNode(int pid, OpCodeType *mdPtr);
 
 /*
 Name: createPCB_List
@@ -62,20 +54,6 @@ Device Output/Device: None
 Dependencies: createNewNode function
 */
 PCB *createPCB_List(ConfigDataType *configPtr, OpCodeType *metaData);
-
-/*
-Name: displayOpCode
-Process: Displays the operation codes based on the configuration 
-settings and updates the process state
-Function Input/Parameters: Configuration pointer, Metadata pointer,
-Process pointer, File pointer, Time
-Function Output/Parameters: None
-Function Output/Returned: None
-Device Input/File: None
-Device Output/Device: None
-Dependencies: getOpCode, displayState functions
-*/
-void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process, FILE *fileName, double *elapsedTime);
 
 /*
 Name: displayProcessState
@@ -139,18 +117,96 @@ Dependencies: None
 */
 void printTitle(ConfigDataType *config, FILE *fileName, double time);
 
-void initializeMemory(int totalMemory);
+/*
+Name: getTimer
+Process: Retrieves lap time using a timer thread
+Function Input/Parameters: Pointer to PCB node
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: runTimer
+*/
+void getTimer(PCB *processPtr);
 
-bool allocateMemory(int processID, int base, int offset);
+/*
+Name: isEndOfProcess
+Process: Checks if the metadata node marks the end of a process
+Function Input/Parameters: Pointer to metadata node
+Function Output/Parameters: None
+Function Output/Returned: Boolean value indicating if it's the end of a process
+Device Input/File: None
+Device Output/Device: None
+Dependencies: None
+*/
+bool isEndOfProcess(OpCodeType *metaPtr);
 
-bool memoryAccess(int processID, int base, int offset);
+/*
+Name: printMemInitial
+Process: Prints memory initialization information
+Function Input/Parameters: Pointer to configuration data type,
+pointer to PCB node, lap time, File pointer
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: displayToMonitor, displayToFile
+*/
+void printMemInitial(ConfigDataType *config, PCB *process, double timer,FILE *outputFile);
 
-void clearProcessMemory(int processID);
+/*
+Name: printOpCode
+Process: Prints the operation code details
+Function Input/Parameters: File pointer, pointer to 
+configuration data type, pointer to PCB node
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: displayToMonitor, displayToFile
+*/
+void printOpCode(FILE* outputFile, ConfigDataType *config, PCB* process);
 
-void printMemoryState(FILE *file);
+/*
+Name: printReadyRunning
+Process: Prints the ProcessState transition from READY_STATE to RUNNING_STATE
+Function Input/Parameters: File pointer, pointer to 
+configuration data type, pointer to PCB node, lap time
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: displayToMonitor, displayToFile
+*/
+void printReadyRunning(FILE* outputFile, ConfigDataType *config, 
+                                       PCB* process ,double time);
 
-void displayMemoryState(ConfigDataType *configPtr, FILE *file, double elapsedTime, const char *message);
+/*
+Name: printStartSim
+Process: Prints the start of the simulation
+Function Input/Parameters: Pointer to configuration data type,
+pointer to PCB node, lap time, File pointer
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: displayToMonitor, displayToFile
+*/
+void printStartSim(ConfigDataType *config, PCB *process,
+                                         double timer,FILE *outputFile);
 
-void handleProcess(ConfigDataType *configPtr, PCB *wkgPtrPCB, FILE *file, double *elapsedTime);
+/*
+Name: printTitle
+Process: Prints the title and the start time of 
+the simulation based on the configuration settings
+Function Input/Parameters: Pointer to configuration data type, 
+pointer to PCB node, File pointer
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: displayToMonitor, displayToFile
+*/
+void printTitle(ConfigDataType *config, PCB *process, FILE *outputFile);
 
 #endif

@@ -5,103 +5,195 @@
 
 #include "simulator.h"
 
-#define MAX_MEMORY_BLOCKS 100  // Adjust size as needed
-#define MEMORY_BLOCK_SIZE 1024 // Block size in KB or as needed
-
-MemoryBlock memory[MAX_MEMORY_BLOCKS]; // Declare the memory array globally
-
 /*
 Name: runSim
-Process: primary simulation driver
-Function Input/Parameters: configuration data (ConfigDataType *),
-                           metadata (OpCodeType *)
+process: primary simulation driver
+Function Input/Parameters:  configuration data (ConfigDataType *),
+                            metadata (OpCodeType *)
 Function Output/Parameters: none
 Function Output/Returned: none
 Device Input/device: none
 Device Output/device: none
-Dependencies: createPCB_List, accessTimer, displayProcessState, 
-              allocateMemory, memoryAccess, clearProcessMemory, 
-              displayOpCode, displayMemoryState
+Dependencies: initializeMemory, allocateMemoryBlock, freeMemoryBlock
 */
-
-void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr) {
+void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr)
+{
+    // Initialize variables
     OpCodeType *localMetaPtr = metaDataMstrPtr;
     PCB *newPCBList = createPCB_List(configPtr, localMetaPtr);
     PCB *wkgPtrPCB = newPCBList;
     char timeStr[10];
-    double elapsedTime = 0.0;
-    FILE *file = (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE) ? fopen(configPtr->logToFileName, "w") : NULL;
-    
-    if (file == NULL && (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)) {
-        printf("Error: Unable to open log file\n");
+    double elapsedTime = 0.0;   // Global elapsed time tracker
+    FILE *file = NULL;
+
+    // Initialize memory for the simulation
+    MemoryBlock *memoryList = initializeMemory(configPtr);
+    if (!memoryList) {
+        printf("Error: Memory initialization failed.\n");
         return;
     }
 
-    accessTimer(ZERO_TIMER, timeStr);
-    elapsedTime = 0.0;
-    printTitle(configPtr, file, elapsedTime);
-    fprintf(file ? file : stdout, "Simulator Program\n=================\n");
-
-    elapsedTime += accessTimer(LAP_TIMER, timeStr);
-    fprintf(file ? file : stdout, "%1.6f, OS: Simulator start\n", elapsedTime);
-
-    while (wkgPtrPCB != NULL) {
-        wkgPtrPCB->currentState = READY_STATE;
-        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
-        wkgPtrPCB = wkgPtrPCB->nextNode;
-    }
-
-    displayMemoryState(configPtr, file, elapsedTime, "After memory initialization");
-
-    wkgPtrPCB = newPCBList;
-    while (wkgPtrPCB != NULL) {
-        wkgPtrPCB->currentState = RUNNING_STATE;
-        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
-        handleProcess(configPtr, wkgPtrPCB, file, &elapsedTime);
-        if (wkgPtrPCB->currentState != EXIT_STATE) {
-            wkgPtrPCB->currentState = EXIT_STATE;
-            displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
-            clearProcessMemory(wkgPtrPCB->pid);
-            displayMemoryState(configPtr, file, elapsedTime, "After clear process success");
+    // Open the log file if logging to a file is required
+    if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE)
+    {
+        file = fopen(configPtr->logToFileName, "w");
+        if (file == NULL)
+        {
+            printf("Error: Unable to open log file\n");
+            return;
         }
+    }
+
+    // Start the simulation timer and ensure the first timestamp is 0.000000
+    accessTimer(ZERO_TIMER, timeStr);
+    elapsedTime = 0.000000;  // Set the initial time to zero explicitly
+
+    // Print the title
+    printTitle(configPtr, file, elapsedTime);
+
+    // Immediately update elapsed time after timer starts for accurate state transitions
+    elapsedTime += accessTimer(LAP_TIMER, timeStr);
+
+    // Loop through the PCB list to set each process to READY state
+    while (wkgPtrPCB != NULL)
+    {
+        wkgPtrPCB->currentState = READY_STATE;
+
+        // Log the state transition for each process
+        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);
+
+        // Move to the next process in the list
         wkgPtrPCB = wkgPtrPCB->nextNode;
     }
 
-    elapsedTime += accessTimer(LAP_TIMER, timeStr);
-    fprintf(file ? file : stdout, "%1.6f, OS: System stop\n", elapsedTime);
-    displayMemoryState(configPtr, file, elapsedTime, "After clear all process success");
-    fprintf(file ? file : stdout, "%1.6f, OS: Simulation end\n", elapsedTime);
+    // Reset working PCB pointer to the start of the list
+    wkgPtrPCB = newPCBList;
 
-    if (file != NULL) fclose(file);
+    // Loop through all the processes for execution
+    while (wkgPtrPCB != NULL)
+    {
+        // Get the next process
+        wkgPtrPCB = getNextProcess(wkgPtrPCB, localMetaPtr);
+
+        // Set process state to RUNNING
+        wkgPtrPCB->currentState = RUNNING_STATE;
+
+        // Update elapsed time before logging
+        elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Accumulate global time
+
+        // Print process selection and transition to running state
+        if (configPtr->logToCode != LOGTO_FILE_CODE)
+        {
+            printf("%1.6f, OS: Process %d selected with %d ms remaining\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->time);
+            printf("%1.6f, OS: Process %d set from READY to RUNNING\n", elapsedTime, wkgPtrPCB->pid);
+        }
+
+        if (file != NULL)
+        {
+            fprintf(file, "%1.6f, OS: Process %d selected with %d ms remaining\n", elapsedTime, wkgPtrPCB->pid, wkgPtrPCB->time);
+            fprintf(file, "%1.6f, OS: Process %d set from READY to RUNNING\n", elapsedTime, wkgPtrPCB->pid);
+        }
+
+        // Handle process operations
+        displayOpCode(configPtr, wkgPtrPCB->mdPtr, wkgPtrPCB, file, &elapsedTime);
+
+        // Memory allocation for processes requesting memory (example with 1024KB):
+        if (allocateMemoryBlock(&memoryList, wkgPtrPCB->pid, 1024))
+        {
+            printf("Memory allocated for Process %d\n", wkgPtrPCB->pid);
+        }
+        else
+        {
+            printf("Failed to allocate memory for Process %d\n", wkgPtrPCB->pid);
+        }
+
+        // Memory deallocation for processes after execution
+        freeMemoryBlock(&memoryList, wkgPtrPCB->pid);
+
+        // Print the process exit status
+        wkgPtrPCB->currentState = EXIT_STATE;
+        displayProcessState(configPtr, wkgPtrPCB, elapsedTime, file);  // Log EXIT state
+
+        // Display current memory blocks for logging
+        displayMemoryBlocks(memoryList);
+
+        // Move to the next process
+        wkgPtrPCB = wkgPtrPCB->nextNode;
+    }
+
+    // Print the system stop message
+    elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Final time accumulation
+
+    if (configPtr->logToCode != LOGTO_FILE_CODE)
+    {
+        printf("%1.6f, OS: System stop\n", elapsedTime);
+    }
+
+    if (file != NULL)
+    {
+        fprintf(file, "%1.6f, OS: System stop\n", elapsedTime);
+        fflush(file);
+    }
+
+    elapsedTime += accessTimer(LAP_TIMER, timeStr);  // Accumulate time again
+
+    if (configPtr->logToCode != LOGTO_FILE_CODE)
+    {
+        printf("%1.6f, OS: Simulation end\n", elapsedTime);
+    }
+
+    if (file != NULL)
+    {
+        fprintf(file, "%1.6f, OS: Simulation end\n", elapsedTime);
+        fflush(file);
+        fclose(file);
+    }
+
+    if (configPtr->logToCode != LOGTO_FILE_CODE)
+    {
+        printf("\nSimulator Program End.\n\n");
+    }
+
+    if (file != NULL)
+    {
+        fprintf(file, "\nSimulator Program End.\n\n");
+        fflush(file);
+    }
+
+    // Stop the timer
     accessTimer(STOP_TIMER, timeStr);
-    printf("\nSimulator Program End.\n\n");
 }
 
 /*
-Name: createNewNode
-Process: Allocates memory for a new PCB node and initializes its
-nextNode pointer to NULL
-Function Input/Parameters: pointer to an existing PCB node
-Function Output/Parameters: Newly created PCB node pointer
+Name: createNewPCBNode
+Process: Creates a NEW_STATE PCB node with specified process ID 
+and metadata pointer
+Function Input/Parameters: Process ID, pointer to metadata
+Function Output/Parameters: None
 Function Output/Returned: Newly created PCB node pointer
 Device Input/File: None
 Device Output/Device: None
 Dependencies: None
 */
-PCB *createNewNode(PCB *pointer)
+PCB *createNewPCBNode(int pid, OpCodeType *mdPtr) 
 {
-	//initialize variables
+    // Allocate memory for the NEW_STATE PCB node
+    PCB *newNode = (PCB *)malloc(sizeof(PCB));
+    //check if memory allocation failed
+    if (newNode == NULL) 
+    {
+        // Memory allocation failed
+        return NULL;
+    }
 
-	//compute data
-	//allocate memory
-	pointer->nextNode = (PCB *)malloc(sizeof(PCB));
-	//move to next pointer
-	pointer = pointer->nextNode;
-	//set next node to null
-	pointer->nextNode = NULL;
-
-	//return pointer
-	return pointer;
+    // Set PCB attributes
+    newNode->pid = pid;
+    newNode->mdPtr = mdPtr;
+    newNode->time = 0.0;
+    newNode->currentState = NEW_STATE;
+    newNode->nextNode = NULL;
+    //return NEW_STATE node
+    return newNode;
 }
 
 /*
@@ -208,124 +300,6 @@ PCB *createPCB_List ( ConfigDataType *configPtr, OpCodeType *metaData)
 
 	//return list
 	return headPtrProcess;
-}
-
-/*
-Name: displayOpCode
-Process: Displays the operation codes based on the configuration
-settings and updates the process state
-Function Input/Parameters: Configuration pointer, Metadata pointer,
-Process pointer, File pointer, Time
-Function Output/Parameters: None
-Function Output/Returned: None
-Device Input/File: None
-Device Output/Device: None
-Dependencies: getOpCode, displayState functions
-*/
-void displayOpCode(ConfigDataType *configPtr, OpCodeType *metaData, PCB *process, FILE *file, double *elapsedTime)
-{
-	double operationTime = 0.0;  // Time for each operation
-
-	// Loop through each operation in the metadata for the current process
-	while (compareString(metaData->strArg1, "end") != STR_EQ)
-	{
-		// Determine the type of operation (CPU or I/O)
-		if (compareString(metaData->command, "cpu") == STR_EQ)
-		{
-			// CPU process operation: adjust timing according to CPU cycle rate
-			operationTime = (metaData->intArg2 * configPtr->procCycleRate) / 1000.0;
-
-			// Log CPU process operation start
-			if (configPtr->logToCode != LOGTO_FILE_CODE)
-			{
-				printf("%1.6f, Process: %d, cpu process operation start\n", *elapsedTime, process->pid);
-			}
-			
-			if (file != NULL)
-			{
-				fprintf(file, "%1.6f, Process: %d, cpu process operation start\n", *elapsedTime, process->pid);
-			}
-		}
-		else if (compareString(metaData->inOutArg, "in") == STR_EQ)
-		{
-			// Input device operation: adjust timing according to IO cycle rate
-			operationTime = (metaData->intArg2 * configPtr->ioCycleRate) / 1000.0;
-
-			// Log input device operation start
-			if (configPtr->logToCode != LOGTO_FILE_CODE)
-			{
-				printf("%1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
-
-			if (file != NULL)
-			{
-				fprintf(file, "%1.6f, Process: %d, %s input operation start\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
-		}
-		else if (compareString(metaData->inOutArg, "out") == STR_EQ)
-		{
-			// Output device operation: adjust timing according to IO cycle rate
-			operationTime = (metaData->intArg2 * configPtr->ioCycleRate) / 1000.0;
-
-			// Log output device operation start
-			if (configPtr->logToCode != LOGTO_FILE_CODE)
-			{
-				printf("%1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
-			
-			if (file != NULL)
-			{
-				fprintf(file, "%1.6f, Process: %d, %s output operation start\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
-		}
-
-		// Update elapsed time for operation duration
-		*elapsedTime += operationTime;
-
-		// Log end of operation
-		if (compareString(metaData->command, "cpu") == STR_EQ)
-		{
-			if (configPtr->logToCode != LOGTO_FILE_CODE)
-			{
-				printf("%1.6f, Process: %d, cpu process operation end\n", *elapsedTime, process->pid);
-			}
-
-			if (file != NULL)
-			{
-				fprintf(file, "%1.6f, Process: %d, cpu process operation end\n", *elapsedTime, process->pid);
-			}
-		}
-		else if (compareString(metaData->inOutArg, "in") == STR_EQ)
-		{
-			if (configPtr->logToCode != LOGTO_FILE_CODE)
-			{
-				printf("%1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
-
-			if (file != NULL)
-			{
-				fprintf(file, "%1.6f, Process: %d, %s input operation end\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
-		}
-		else if (compareString(metaData->inOutArg, "out") == STR_EQ)
-		{
-			if (configPtr->logToCode != LOGTO_FILE_CODE)
-			{
-				printf("%1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
-			
-			if (file != NULL)
-			{
-				fprintf(file, "%1.6f, Process: %d, %s output operation end\n", *elapsedTime, process->pid, metaData->strArg1);
-			}
-		}
-
-		// Move to the next operation in the metadata
-		metaData = metaData->nextNode;
-	}
-
-	// After processing all operations, set the process state to EXIT
-	process->currentState = EXIT_STATE;
 }
 
 /*
@@ -566,125 +540,544 @@ void printTitle(ConfigDataType *config, FILE* fileName, double time)
 	}
 }
 
-/* Initialize memory blocks */
-void initializeMemory(int totalMemory) {
-    for (int i = 0; i < MAX_MEMORY_BLOCKS; i++) {
-        memory[i] = (MemoryBlock){.base = i * MEMORY_BLOCK_SIZE, .offset = MEMORY_BLOCK_SIZE, .processID = -1, .isAllocated = false};
+MemoryBlock *initializeMemory(ConfigDataType *configPtr) {
+    // Allocate memory for the head block
+    MemoryBlock *headBlock = (MemoryBlock *)malloc(sizeof(MemoryBlock));
+    if (headBlock == NULL) {
+        return NULL; // Handle allocation failure if necessary
     }
-    printMemoryState(stdout);
+    headBlock->base = 0;
+    headBlock->offset = configPtr->memAvailable;
+    headBlock->pid = -1;   // Indicates free memory
+    headBlock->next = NULL;
+
+    return headBlock;
 }
 
-/* Attempt to allocate memory */
-bool allocateMemory(int processID, int base, int offset) {
-    for (int i = 0; i < MAX_MEMORY_BLOCKS; i++) {
-        if (!memory[i].isAllocated && memory[i].base == base && memory[i].offset >= offset) {
-            memory[i].isAllocated = true;
-            memory[i].processID = processID;
-            printMemoryState(stdout);
-            return true;
+bool allocateMemoryBlock(MemoryBlock **head, int pid, int size) {
+    MemoryBlock *current = *head;
+    while (current != NULL) {
+        if (current->pid == -1 && current->offset >= size) { // Check for free block
+            // Allocate the block to the process
+            current->pid = pid;
+            int originalOffset = current->offset;
+            current->offset = size;
+
+            // If there's remaining space, split the block
+            if (originalOffset > size) {
+                MemoryBlock *newBlock = (MemoryBlock *)malloc(sizeof(MemoryBlock));
+                newBlock->base = current->base + size;
+                newBlock->offset = originalOffset - size;
+                newBlock->pid = -1;  // Free block
+                newBlock->next = current->next;
+                current->next = newBlock;
+            }
+            return true; // Allocation successful
         }
+        current = current->next;
     }
-    printf("Allocation failed for Process %d\n", processID);
-    return false;
+    return false; // No suitable block found
 }
 
-/* Check memory access */
-bool memoryAccess(int processID, int base, int offset) {
-    for (int i = 0; i < MAX_MEMORY_BLOCKS; i++) {
-        if (memory[i].isAllocated && memory[i].processID == processID &&
-            memory[i].base <= base && (memory[i].base + memory[i].offset) >= (base + offset)) {
-            printMemoryState(stdout);
-            return true;
-        }
-    }
-    printf("Segmentation fault, Process %d\n", processID);
-    return false;
-}
+void freeMemoryBlock(MemoryBlock **head, int pid) {
+    MemoryBlock *current = *head;
+    MemoryBlock *prev = NULL;
 
-void clearProcessMemory(int processID) {
-    for (int i = 0; i < MAX_MEMORY_BLOCKS; i++) {
-        if (memory[i].processID == processID) {
-            memory[i].isAllocated = false;
-            memory[i].processID = -1;
-        }
-    }
-    printMemoryState(stdout);
-}
+    while (current != NULL) {
+        if (current->pid == pid) { // Block owned by this process
+            current->pid = -1; // Mark as free
 
-/* Print current memory state */
-void printMemoryState(FILE *file) {
-    for (int i = 0; i < MAX_MEMORY_BLOCKS; i++) {
-        fprintf(file, "%d [ %s, P#: %s, %d-%d ] %d\n", i,
-                memory[i].isAllocated ? "Used" : "Open",
-                memory[i].isAllocated ? (char[16]){ 0 } : "x",
-                memory[i].base,
-                memory[i].base + memory[i].offset - 1,
-                MEMORY_BLOCK_SIZE);
-    }
-}
-
-void displayMemoryState(ConfigDataType *configPtr, FILE *file, double elapsedTime, const char *message) {
-    fprintf(file ? file : stdout, "--------------------------------------------------\n");
-    fprintf(file ? file : stdout, "%s\n", message);
-    printMemoryState(file ? file : stdout);
-    fprintf(file ? file : stdout, "--------------------------------------------------\n");
-}
-
-void handleProcess(ConfigDataType *configPtr, PCB *wkgPtrPCB, FILE *file, double *elapsedTime) {
-    char timeStr[10];
-    OpCodeType *opCode = wkgPtrPCB->mdPtr;
-
-    while (opCode != NULL) {
-        // Handle memory allocation
-        if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "allocate") == 0) {
-            fprintf(file ? file : stdout, "%1.6f, Process: %d, mem allocate request (%d, %d)\n", 
-                    *elapsedTime, wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3);
-
-            if (allocateMemory(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3)) {
-                displayMemoryState(configPtr, file, *elapsedTime, "After allocate success");
-                fprintf(file ? file : stdout, "%1.6f, Process: %d, successful mem allocate request\n", *elapsedTime, wkgPtrPCB->pid);
-            } else {
-                displayMemoryState(configPtr, file, *elapsedTime, "After allocate failure");
-                fprintf(file ? file : stdout, "%1.6f, Process: %d, failed mem allocate request\n", *elapsedTime, wkgPtrPCB->pid);
-                wkgPtrPCB->currentState = EXIT_STATE;
-                displayProcessState(configPtr, wkgPtrPCB, *elapsedTime, file);
-                clearProcessMemory(wkgPtrPCB->pid);
-                break;
+            // Merge with next block if it’s free
+            if (current->next != NULL && current->next->pid == -1) {
+                current->offset += current->next->offset;
+                MemoryBlock *temp = current->next;
+                current->next = current->next->next;
+                free(temp);
+            }
+            // Merge with previous block if it’s free
+            if (prev != NULL && prev->pid == -1) {
+                prev->offset += current->offset;
+                prev->next = current->next;
+                free(current);
+                current = prev; // Set current back to prev after merging
             }
         }
-        // Handle memory access
-        else if (strcmp(opCode->command, "A") == 0 && strcmp(opCode->strArg1, "access") == 0) {
-            fprintf(file ? file : stdout, "%1.6f, Process: %d, mem access request (%d, %d)\n", 
-                    *elapsedTime, wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3);
+        prev = current;
+        current = current->next;
+    }
+}
 
-            if (memoryAccess(wkgPtrPCB->pid, opCode->intArg2, opCode->intArg3)) {
-                displayMemoryState(configPtr, file, *elapsedTime, "After access success");
-                fprintf(file ? file : stdout, "%1.6f, Process: %d, successful mem access request\n", *elapsedTime, wkgPtrPCB->pid);
-            } else {
-                displayMemoryState(configPtr, file, *elapsedTime, "After access failure");
-                fprintf(file ? file : stdout, "%1.6f, Process: %d, failed mem access request\n", *elapsedTime, wkgPtrPCB->pid);
-                fprintf(file ? file : stdout, "%1.6f, OS: Segmentation fault, Process %d ended\n", *elapsedTime, wkgPtrPCB->pid);
-                wkgPtrPCB->currentState = EXIT_STATE;
-                displayProcessState(configPtr, wkgPtrPCB, *elapsedTime, file);
-                clearProcessMemory(wkgPtrPCB->pid);
-                break;
+void displayMemoryBlocks(MemoryBlock *head) {
+    MemoryBlock *current = head;
+    printf("Memory Layout:\n");
+    while (current != NULL) {
+        printf("Base: %d, Offset: %d, PID: %d\n", current->base, current->offset, current->pid);
+        current = current->next;
+    }
+    printf("Available Memory: %d KB\n", configPtr->memAvailable);
+}
+
+bool accessMemory(int base, int offset) {
+    MemoryBlock *block = findBlockByRange(base, offset);
+    return block != NULL; // Return success if block is found
+}
+
+/*
+Name: displayMem
+Process: Displays memory details
+Function Input/Parameters: Pointer to PCB node, pointer to 
+configuration data type, File pointer
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: displayToMonitor, displayToFile
+*/
+void displayMem(PCB *process, ConfigDataType *configPtr, FILE *outputFile)
+{
+    // Declare/initialize variables
+    int memStart = 0;
+    int memBase = process->mdPtr->intArg2;
+    int memOffset = process->mdPtr->intArg3;
+    int memRange = memOffset - 1;
+    int memEndRange = process->mdPtr->intArg2 + memRange;
+    int memBaseRequest = process->mdPtr->intArg2;
+    int memOffsetRequest = memOffset - 1;
+    double time;
+    
+    // Get the current time
+    time = accessTimer(LAP_TIMER, NULL); 
+
+    //check if log to == monitor or both
+    if (configPtr->logToCode == LOGTO_MONITOR_CODE || 
+                     configPtr->logToCode == LOGTO_BOTH_CODE)
+    {
+        //then display to monitor
+        printf("%1.6f, Process: %d, %s %s request (%d, %d)\n", 
+        time, process->pid, process->mdPtr->command,  
+        process->mdPtr->strArg1, memBase, memOffset);
+        //display memory details
+        printf("--------------------------------------------------\n");
+        //check if the request is allocate
+        if (compareString(process->mdPtr->strArg1, "allocate") == STR_EQ)
+        {
+            //display success
+            printf("After %s success\n", process->mdPtr->strArg1);
+            //display memory details
+            printf("%d [ Used, P#: %d, %d-%d ] %d\n", memStart, process->pid, 
+                                             memBase, memEndRange, memRange);
+            //display memory details
+            printf("%d [ Open, P#: x, 0-0 ] %d\n", memBase, 
+                                                   configPtr->memAvailable);
+        }
+        //otherwise if the request is access
+        else if (compareString(process->mdPtr->strArg1, "access") == STR_EQ)
+        {
+            //check if the memory range is greater than the offset request
+            if (memRange >= memOffsetRequest && memBase == memBaseRequest)
+            {
+                //display success
+                printf("After %s success\n", process->mdPtr->strArg1);
+                //display memory details
+                printf("%d [ Used, P#: %d, %d-%d ] %d\n", memStart, process->pid, 
+                                             memBaseRequest, memEndRange, memRange);
+                //display memory details
+                printf("%d [ Open, P#: x, 0-0 ] %d\n", memBaseRequest, 
+                                                   configPtr->memAvailable);
+                //display success
+                printf("%1.6f, Process: %d, successful %s %s request\n", 
+                time, process->pid, process->mdPtr->command, 
+                process->mdPtr->strArg1);
+            }
+            //otherwise
+            else
+            {
+                //display failure
+                printf("After %s failure\n", process->mdPtr->strArg1);
             }
         }
-        // Handle CPU or I/O operations
-        else {
-            displayOpCode(configPtr, opCode, wkgPtrPCB, file, elapsedTime);
+        //display line
+        printf("--------------------------------------------------\n");
+    }
+
+    //if log to == file or both 
+    if (configPtr->logToCode == LOGTO_FILE_CODE || 
+                                configPtr->logToCode == LOGTO_BOTH_CODE)
+    {
+        //then display to file
+        fprintf(outputFile, 
+        "%1.6f, Process: %d, %s %s request (%d, %d)\n", 
+        time, process->pid, process->mdPtr->command,
+         process->mdPtr->strArg1, memBase, memOffset);
+        fprintf(outputFile,
+         "--------------------------------------------------\n");
+        //check if the request is allocate
+        if (compareString(process->mdPtr->strArg1, "allocate") == STR_EQ)
+        {
+            //display success
+            fprintf(outputFile, "After %s success\n", 
+                                  process->mdPtr->strArg1);
+            //display memory details
+            fprintf(outputFile, "%d [ Used, P#: %d, %d-%d ] %d\n", 
+                      memStart, process->pid, memBase, memEndRange, memRange);
+            //display memory details
+            fprintf(outputFile, "%d [ Open, P#: x, 0-0 ] %d\n", 
+                                            memBase, configPtr->memAvailable);
         }
-
-        // Update elapsed time and move to the next operation
-        *elapsedTime += accessTimer(LAP_TIMER, timeStr);
-        opCode = opCode->nextNode;
+        //otherwise if the request is access
+        else if (compareString(process->mdPtr->strArg1, "access") == STR_EQ)
+        {
+            //check if the memory range is greater than the offset request
+            if (memRange >= memOffsetRequest && memBase == memBaseRequest)
+            {
+                //display success
+                fprintf(outputFile, "After %s success\n", 
+                                                   process->mdPtr->strArg1);
+                //display memory details
+                fprintf(outputFile, "%d [ Used, P#: %d, %d-%d ] %d\n", 
+                memStart, process->pid, memBaseRequest, memEndRange, memRange);
+                //display memory details
+                fprintf(outputFile, "%d [ Open, P#: x, 0-0 ] %d\n", 
+                memBaseRequest, configPtr->memAvailable);
+                //display success
+                fprintf(outputFile, 
+                "%1.6f, Process: %d, successful %s %s request\n", 
+                                  time, process->pid, process->mdPtr->command,
+                                                     process->mdPtr->strArg1);
+            }
+            //otherwise
+            else
+            {
+                //display failure
+                fprintf(outputFile, "After %s failure\n", 
+                                                   process->mdPtr->strArg1);
+            }
+        }
+        //display line
+        fprintf(outputFile,
+                      "--------------------------------------------------\n");
     }
+    //return nothing
+}
 
-    // Finalize process state if not in EXIT_STATE
-    if (wkgPtrPCB->currentState != EXIT_STATE) {
-        wkgPtrPCB->currentState = EXIT_STATE;
-        displayProcessState(configPtr, wkgPtrPCB, *elapsedTime, file);
-        clearProcessMemory(wkgPtrPCB->pid);
-        displayMemoryState(configPtr, file, *elapsedTime, "After clear process success");
-    }
+/*
+Name: getTimer
+Process: Retrieves lap time using a timer thread
+Function Input/Parameters: Pointer to PCB node
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: runTimer
+*/
+void getTimer(PCB *processPtr)
+{
+   //initialize variables
+    pthread_t timer;
+    TimerData timerData = { .lap = 0 };
+
+    // Create the timer thread
+    pthread_create(&timer, NULL, runTimer, (void*)&timerData);
+    
+    // Join the timer thread
+    pthread_join(timer, NULL);
+}
+
+/*
+Name: isEndOfProcess
+Process: Checks if the metadata node marks the end of a process
+Function Input/Parameters: Pointer to metadata node
+Function Output/Parameters: None
+Function Output/Returned: Boolean value indicating if it's the end of a process
+Device Input/File: None
+Device Output/Device: None
+Dependencies: None
+*/
+bool isEndOfProcess(OpCodeType *metaPtr) 
+{
+   //return true if the metadata node marks the end of a process
+      //function: compareString
+    return compareString(metaPtr->strArg1, "end") == STR_EQ && 
+           compareString(metaPtr->command, "app") == STR_EQ;
+}
+
+/*
+Name: printMemInitial
+Process: Prints memory initialization information
+Function Input/Parameters: Pointer to configuration data type,
+pointer to PCB node, lap time, File pointer
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: displayToMonitor, displayToFile
+*/
+void printMemInitial(ConfigDataType *config, PCB *process, 
+                                        double timer,FILE *outputFile)
+{
+   //initialize variables
+
+   //if the log to == monitor
+   if (config->logToCode == LOGTO_MONITOR_CODE)
+   {
+      //run monitor display
+         //function: displayToMonitor
+      displayToMonitor(config, process, MEMINTIAL, timer);
+   }
+   //if the log to == file
+   else if (config->logToCode == LOGTO_FILE_CODE)
+   {
+      //run file display
+         //function: displayToFile
+      displayToFile(outputFile, process, config, MEMINTIAL, timer);
+   }
+   //if the log to == BOTH
+   else if (config->logToCode == LOGTO_BOTH_CODE)
+   {
+      //run both file and monitor display
+         //function: displayToFile, displayToMonitor
+      displayToFile(outputFile, process, config, MEMINTIAL, timer);
+
+      displayToMonitor(config, process, MEMINTIAL, timer);
+
+   }
+   else if (outputFile == NULL)
+   {
+      //display no output file message
+         //function: printf
+      printf("There is no output file detected.\n");
+   }
+   //otherwise
+   else
+   {
+      //print to screen error statement
+         //function: printf
+      printf("Something went wrong at PRINTING MEM INITAL\n");
+   }
+   //return nothing
+}
+
+/*
+Name: printOpCode
+Process: Prints the operation code details
+Function Input/Parameters: File pointer, pointer to 
+configuration data type, pointer to PCB node
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: displayToMonitor, displayToFile
+*/
+void printOpCode(FILE* outputFile, ConfigDataType *config, PCB* process)
+{
+   //initialize variables
+   char timeString[MAX_STR_LEN];
+   double time = accessTimer(LAP_TIMER, timeString);
+
+   //if the log to == monitor
+   if (config->logToCode == LOGTO_MONITOR_CODE)
+   {
+      //run monitor display
+         //function: displayToMonitor
+      displayToMonitor(config, process, OPDISPLAY, time);
+   }
+   //if the log to == file
+   else if (config->logToCode == LOGTO_FILE_CODE)
+   {
+      //run file display
+         //function: displayToFile
+      displayToFile(outputFile, process, config, OPDISPLAY, time);
+   }
+   //if the log to == BOTH
+   else if (config->logToCode == LOGTO_BOTH_CODE)
+   {
+      //run both file and monitor display
+         //function: displayToFile, displayToMonitor
+      displayToFile(outputFile, process, config, OPDISPLAY, time);
+
+      displayToMonitor(config, process, OPDISPLAY, time);
+   }
+   //if there is no output file
+   else if (outputFile == NULL)
+   {
+      //display no output file message
+         //function: printf
+      printf("There is no output file detected.\n");
+   }
+   //otherwise
+   else
+   {
+      //print to screen error statement
+         //function: printf
+      printf("Something went wrong at PRINTING IO DISPLAY\n");
+   }
+
+}
+
+/*
+Name: printReadyRunning
+Process: Prints the ProcessState transition from READY_STATE to RUNNING_STATE
+Function Input/Parameters: File pointer, pointer to 
+configuration data type, pointer to PCB node, lap time
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: displayToMonitor, displayToFile
+*/
+void printReadyRunning(FILE* outputFile, ConfigDataType *config, 
+                                       PCB* process ,double time)
+{
+   //initialize variables
+
+   //if the log to == monitor
+   if (config->logToCode == LOGTO_MONITOR_CODE)
+   {
+      //run monitor display
+         //function: displayToMonitor
+      displayToMonitor(config, process, READYRUNNING, time);
+   }
+   //if the log to == file
+   else if (config->logToCode == LOGTO_FILE_CODE)
+   {
+      //run file display
+         //function: displayToFile
+      displayToFile(outputFile, process, config, READYRUNNING, time);
+   }
+   //if the log to == BOTH
+   else if (config->logToCode == LOGTO_BOTH_CODE)
+   {
+      //run both file and monitor display
+         //function: displayToFile, displayToMonitor
+      displayToFile(outputFile, process, config, READYRUNNING, time);
+
+      displayToMonitor(config, process, READYRUNNING, time);
+   }
+   //if there is no output file
+   else if (outputFile == NULL)
+   {
+      //display no output file message
+         //function: printf
+      printf("There is no output file detected.\n");
+   }
+   //otherwise
+   else
+   {
+      //print to screen error statement
+         //function: printf
+      printf("Something went wrong at PRINTING MEM INITAL\n");
+   }
+
+   //return nothing
+}
+
+/*
+Name: printStartSim
+Process: Prints the start of the simulation
+Function Input/Parameters: Pointer to configuration data type,
+pointer to PCB node, lap time, File pointer
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: displayToMonitor, displayToFile
+*/
+void printStartSim(ConfigDataType *config, PCB *process,
+                                         double timer,FILE *outputFile)
+{
+ //initialize variables
+   //if the log to == monitor
+   if (config->logToCode == LOGTO_MONITOR_CODE)
+   {
+      //run monitor display
+         //function: displayToMonitor
+      displayToMonitor(config, process, SIMSTART, timer);
+   }
+   //if the log to == file
+   else if (config->logToCode == LOGTO_FILE_CODE)
+   {
+      //run file display
+         //function: displayToFile
+      displayToFile(outputFile, process, config, SIMSTART, timer);
+   }
+   //if the log to == BOTH
+   else if (config->logToCode == LOGTO_BOTH_CODE)
+   {
+      //run both file and monitor display
+         //function: displayToFile, displayToMonitor
+      displayToFile(outputFile, process, config, SIMSTART, timer);
+      displayToMonitor(config, process, SIMSTART, timer);
+
+   }
+   //if there is no output file
+   else if (outputFile == NULL)
+   {
+      //display no output file message
+         //function: printf
+      printf("There is no output file detected.\n");
+   }
+   //otherwise
+   else
+   {
+      //print to screen error statement
+         //function: printf
+      printf("Something went wrong at PRINTING SIM START\n");
+   }
+   //return nothing
+}
+
+
+/*
+Name: printTitle
+Process: Prints the title and the start time of 
+the simulation based on the configuration settings
+Function Input/Parameters: Pointer to configuration data type, 
+pointer to PCB node, File pointer
+Function Output/Parameters: None
+Function Output/Returned: None
+Device Input/File: None
+Device Output/Device: None
+Dependencies: displayToMonitor, displayToFile
+*/
+void printTitle(ConfigDataType *config, PCB *process, FILE *outputFile)
+{
+   //initialize variables
+   //if the log to == monitor
+   if (config->logToCode == LOGTO_MONITOR_CODE)
+   {
+      //run monitor display
+         //function: displayToMonitor
+      displayToMonitor(config, process, TITLE, NOVALUE);
+   }
+   //if the log to == file
+   else if (config->logToCode == LOGTO_FILE_CODE)
+   {
+      //run file display
+         //function: displayToFile
+      displayToFile(outputFile, process, config, TITLE, NOVALUE);
+   }
+   //if the log to == BOTH
+   else if (config->logToCode == LOGTO_BOTH_CODE)
+   {
+      //run both file and monitor display
+         //function: displayToFile, displayToMonitor
+      displayToFile(outputFile, process, config, TITLE, NOVALUE);
+      displayToMonitor(config, process, TITLE, NOVALUE);
+
+   }
+   //if there is no output file
+   else if (outputFile == NULL)
+   {
+      //display no output file message
+         //function: printf
+      printf("There is no output file detected.\n");
+   }
+   //otherwise
+   else
+   {
+      //print to screen error statement
+         //function: printf
+      printf("Something went wrong at PRINT TITLE\n");
+   }
+   //return nothing
 }
