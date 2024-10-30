@@ -14,6 +14,13 @@
 #include <pthread.h>
 #include <stdio.h>
 
+typedef struct MemoryBlock {
+    int base;
+    int offset;
+    int pid;
+    struct MemoryBlock *next;
+} MemoryBlock;
+
 /*
 Name: runSim
 process: primary simulation driver
@@ -192,7 +199,16 @@ Device Input/File: None
 Device Output/Device: None
 Dependencies: displayToMonitor, displayToFile
 */
-void printStartSim(ConfigDataType *config, PCB *process,
-                                         double timer,FILE *outputFile);
+void printStartSim(ConfigDataType *config, PCB *process, double timer,FILE *outputFile);
+
+// Declaration of displayOpCode function
+void displayOpCode(ConfigDataType *configPtr, OpCodeType *mdPtr, PCB *pcb, FILE *file, double *elapsedTime);
+
+// Declare the memory-related functions
+MemoryBlock *initializeMemory(ConfigDataType *configPtr);
+bool allocateMemoryBlock(MemoryBlock **head, int pid, int size);
+void freeMemoryBlock(MemoryBlock **head, int pid);
+void displayMemoryBlocks(MemoryBlock *head);
+
 
 #endif

@@ -241,7 +241,7 @@ PCB *createPCB_List ( ConfigDataType *configPtr, OpCodeType *metaData)
 			{
 				//create new node
 				//function: createNewNode
-				wkgPtrProcess->nextNode = createNewNode(wkgPtrProcess);
+				wkgPtrProcess->nextNode = createNewPCBNode(wkgPtrProcess->pid, metaPtr);
 
 				//move to next ptr
 				wkgPtrProcess = wkgPtrProcess->nextNode;
