@@ -1,6 +1,6 @@
 // header files
 #include "simulator.h"
-
+#include <limits.h>
 
 /*
 Name: calculateRemainingTime
