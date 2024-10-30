@@ -1,12 +1,9 @@
-/**
- * Meta Data Operations
- */
-#ifndef METADATAOPS_H
-#define METADATAOPS_H
+#ifndef metadataops_h
+#define metadataops_h
 
 #include "StringUtils.h"
-#include "constants.h"
-#include "types.h"
+#include "StandardConstants.h"
+#include "datatypes.h"
 #include <stdio.h>
 
 /**

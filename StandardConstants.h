@@ -1,63 +1,54 @@
 // Preprocessor directives
-#ifndef STANDARD_CONSTANTS_H
-#define STANDARD_CONSTANTS_H
+#ifndef StandardConstants_h
+#define StandardConstants_h
 
-// Include Boolean
+// Boolean support
 #include <stdbool.h>
 
-// global constants
-
-// constant for end of c-string null character
+// GLOBAL CONSTANTS
+// Constant for end of C-String null character
 #define CARRIAGE_RETURN_CHAR '\r'
 
-//constant for a COLON
+// Constant for colon
 #define COLON ':'
 
-//constant for a COMMA
+// Constant for comma
 #define COMMA ','
 
-// constant for large string length
-#define LARGE_STR_LEN 96
-
-// constant for small string length
-#define MIN_STR_LEN 32
-
-// constant for maximum string length
-#define MAX_STR_LEN 128
-
-// constant for end of c-string null character
-#define NEWLINE_CHAR '\n'
-
-// constant for default non printable character
-#define NON_PRINTABLE_CHAR (char)127
-
-// constant for end of c-string null character
-#define NULL_CHAR '\0'
-
-//Constant for a period
+// Constant for period
 #define PERIOD '.'
 
-//Constant for a semicolon
+// Constant for semicolon
 #define SEMICOLON ';'
 
-// constant for space character
+// Constant for end of C-String null character
+#define NEWLINE_CHAR '\n'
+
+// Constant for large string length
+#define LARGE_STR_LENGTH 96
+
+// Constant for small string length
+#define MIN_STR_LEN 32
+
+// Constant for maximum string length
+#define MAX_STR_LEN 128
+
+// Constant for end of C-String null character
+#define NULL_CHAR '\0'
+
+// Constant for space character
 #define SPACE ' '
 
-// constant for standard string length
+// Constant for standard string length
 #define STD_STR_LEN 64
 
-// constant for string equal
+// Constant for string equality
 #define STR_EQ 0
 
-// constant for substring not found
+// Constant for substring not found
 #define SUBSTRING_NOT_FOUND -1
 
-//Constant for PRECISION
-#define PRECISION 2
+// Constant for non-printable character
+#define NON_PRINTABLE_CHAR (char)127
 
-//Constant for printing a pipe
-#define PIPE '|'
-
-#endif  // STANDARD_CONSTANTS
-
-
+#endif

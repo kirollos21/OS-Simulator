@@ -1,11 +1,8 @@
-/**
- * Configuration Data Operations
- */
-#ifndef CONFIGOPS_H
-#define CONFIGOPS_h
+#ifndef configops_h
+#define configops_h
 #include "StringUtils.h"
-#include "constants.h"
-#include "types.h"
+#include "StandardConstants.h"
+#include "datatypes.h"
 #include <stdio.h>
 
 /**

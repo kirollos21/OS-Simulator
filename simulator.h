@@ -1,11 +1,11 @@
-#ifndef SIMULATOR_H
-#define SIMULATOR_H
+#ifndef simulator_h
+#define simulator_h
 
 #include "StringUtils.h"
 #include "configops.h"
-#include "constants.h"
+#include "StandardConstants.h"
 #include "simtimer.h"
-#include "types.h"
+#include "datatypes.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>

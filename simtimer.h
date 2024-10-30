@@ -21,8 +21,8 @@
 
 // Header files ///////////////////////////////////////////////////////////////
 
-#include "constants.h"
-#include "types.h"
+#include "StandardConstants.h"
+#include "datatypes.h"
 #include <math.h>
 #include <string.h>
 #include <sys/time.h>
