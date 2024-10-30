@@ -752,46 +752,58 @@ void printOpCode(FILE* outputFile, ConfigDataType *config, PCB* process)
    char timeString[MAX_STR_LEN];
    double time = accessTimer(LAP_TIMER, timeString);
 
-   //if the log to == monitor
+   // Check if the operation is an I/O or CPU process and handle timing
+   if (compareString(process->mdPtr->command, "cpu") == STR_EQ) 
+   {
+      // Print CPU operation start
+      printf("%1.6f, Process: %d, cpu process operation start\n", time, process->pid);
+      
+      // Run timer based on CPU cycle time
+      runTimer(config->procCycleRate * process->mdPtr->intArg2);
+      
+      // Update time and print CPU operation end
+      time = accessTimer(LAP_TIMER, NULL);
+      printf("%1.6f, Process: %d, cpu process operation end\n", time, process->pid);
+   } 
+   else if (compareString(process->mdPtr->command, "dev") == STR_EQ) 
+   {
+      // Check if the operation is input or output
+      char *operationType = (compareString(process->mdPtr->inOutArg, "in") == STR_EQ) ? "input" : "output";
+      
+      // Print device operation start
+      printf("%1.6f, Process: %d, %s %s operation start\n", time, process->pid, process->mdPtr->strArg1, operationType);
+      
+      // Run timer based on I/O cycle time
+      runTimer(config->ioCycleRate * process->mdPtr->intArg2);
+      
+      // Update time and print device operation end
+      time = accessTimer(LAP_TIMER, NULL);
+      printf("%1.6f, Process: %d, %s %s operation end\n", time, process->pid, process->mdPtr->strArg1, operationType);
+   }
+
+   // Log to monitor, file, or both as per the configuration
    if (config->logToCode == LOGTO_MONITOR_CODE)
    {
-      //run monitor display
-         //function: displayToMonitor
       displayToMonitor(config, process, OPDISPLAY, time);
    }
-   //if the log to == file
    else if (config->logToCode == LOGTO_FILE_CODE)
    {
-      //run file display
-         //function: displayToFile
       displayToFile(outputFile, process, config, OPDISPLAY, time);
    }
-   //if the log to == BOTH
    else if (config->logToCode == LOGTO_BOTH_CODE)
    {
-      //run both file and monitor display
-         //function: displayToFile, displayToMonitor
       displayToFile(outputFile, process, config, OPDISPLAY, time);
-
       displayToMonitor(config, process, OPDISPLAY, time);
    }
-   //if there is no output file
    else if (outputFile == NULL)
    {
-      //display no output file message
-         //function: printf
       printf("There is no output file detected.\n");
    }
-   //otherwise
    else
    {
-      //print to screen error statement
-         //function: printf
       printf("Something went wrong at PRINTING IO DISPLAY\n");
    }
-
 }
-
 
 
 /*
