@@ -7,6 +7,7 @@
 #define datatypes_h
 #include <stdio.h>
 #include <stdbool.h>
+#include <pthread.h>
 #include "StandardConstants.h"
 
 // GLOBAL CONSTANTS - may be used in other files

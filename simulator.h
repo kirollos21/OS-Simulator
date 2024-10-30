@@ -195,18 +195,4 @@ Dependencies: displayToMonitor, displayToFile
 void printStartSim(ConfigDataType *config, PCB *process,
                                          double timer,FILE *outputFile);
 
-/*
-Name: printTitle
-Process: Prints the title and the start time of 
-the simulation based on the configuration settings
-Function Input/Parameters: Pointer to configuration data type, 
-pointer to PCB node, File pointer
-Function Output/Parameters: None
-Function Output/Returned: None
-Device Input/File: None
-Device Output/Device: None
-Dependencies: displayToMonitor, displayToFile
-*/
-void printTitle(ConfigDataType *config, PCB *process, FILE *outputFile);
-
 #endif
