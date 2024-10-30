@@ -607,14 +607,12 @@ Device Output/Device: None
 Dependencies: None
 */
 PCB *getNextProcess(int cpuScheduler, PCB *processPtr) {
-    // Initialize variables
     int shortestJobTime = INT_MAX;
     PCB *wkgPtr = processPtr;
     PCB *selectedProcess = NULL;
 
-    // If the CPU scheduler is FCFS
     if (cpuScheduler == CPU_SCHED_FCFS_N_CODE) {
-        // Find the next READY process in FCFS order
+        // Find the next READY process for FCFS
         while (wkgPtr != NULL) {
             if (wkgPtr->currentState == READY) {
                 selectedProcess = wkgPtr;
@@ -623,11 +621,9 @@ PCB *getNextProcess(int cpuScheduler, PCB *processPtr) {
             wkgPtr = wkgPtr->nextNode;
         }
     }
-    // If the CPU scheduler is SJF
     else if (cpuScheduler == CPU_SCHED_SJF_N_CODE) {
-        // Loop through all processes to find the shortest READY process
+        // Find the READY process with the shortest remaining time
         while (wkgPtr != NULL) {
-            // Check if process is READY and has the shortest remaining time
             if (wkgPtr->currentState == READY && wkgPtr->remainingtime < shortestJobTime) {
                 shortestJobTime = wkgPtr->remainingtime;
                 selectedProcess = wkgPtr;
@@ -636,10 +632,8 @@ PCB *getNextProcess(int cpuScheduler, PCB *processPtr) {
         }
     }
 
-    // Return the selected process or NULL if none found
-    return selectedProcess;
+    return selectedProcess;  // Will return NULL if no READY process is found
 }
-
 
 /*
 Name: isEndOfProcess
@@ -957,7 +951,6 @@ Dependencies: createPCB_List, displayState, getNextProcess,
 displayOpCode, printTitle
 */
 void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr) {
-    // initialize variables
     double elapsedTime = 0.0;
     int processCounter = 0, totProc = 0;
     OpCodeType *localMetaPtr = metaDataMstrPtr;
@@ -965,47 +958,50 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr) {
     PCB *wkgPCBPtr = newPCBList;
     FILE *outputFile = NULL;
 
-    // open output file if needed
     if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE) {
         outputFile = fopen(configPtr->logToFileName, "w");
     }
     
-    // print initial simulator start message
     elapsedTime = accessTimer(LAP_TIMER, NULL);
     printStartSim(configPtr, wkgPCBPtr, elapsedTime, outputFile);
     printMemInitial(configPtr, wkgPCBPtr, elapsedTime, outputFile);
 
     // MASTER LOOP
     while (processCounter < totProc) {
-        // Select next process based on scheduling policy
-        if (configPtr->cpuSchedCode == CPU_SCHED_SJF_N_CODE) {
-            wkgPCBPtr = getNextProcess(configPtr->cpuSchedCode, wkgPCBPtr);
-        } else {
-            wkgPCBPtr = getNextProcess(CPU_SCHED_FCFS_N_CODE, newPCBList);
+        // Get the next process based on scheduling policy
+        wkgPCBPtr = getNextProcess(configPtr->cpuSchedCode, newPCBList);
+        if (wkgPCBPtr == NULL) {
+            // Exit loop if no more READY processes are found
+            break;
         }
 
-        // Transition process to RUNNING
+        // Set process state to RUNNING and print
         wkgPCBPtr->currentState = RUNNING;
         elapsedTime = accessTimer(LAP_TIMER, NULL);
         printReadyRunning(outputFile, configPtr, wkgPCBPtr, elapsedTime);
 
-        // Process each opcode
+        // Process each operation within the selected process
         while (wkgPCBPtr->mdPtr != NULL &&
                !(compareString(wkgPCBPtr->mdPtr->command, "app") == STR_EQ &&
                  compareString(wkgPCBPtr->mdPtr->strArg1, "end") == STR_EQ)) {
+
             elapsedTime = accessTimer(LAP_TIMER, NULL);
             printOpCode(outputFile, configPtr, wkgPCBPtr);
 
-            // Check for memory operations
+            // Check and handle memory operations
             if (compareString(wkgPCBPtr->mdPtr->command, "mem") == STR_EQ) {
                 displayMem(wkgPCBPtr, configPtr, outputFile);
             }
 
-            // Advance to next operation in the current process
+            // Move to the next operation
             wkgPCBPtr->mdPtr = wkgPCBPtr->mdPtr->nextNode;
+            if (wkgPCBPtr->mdPtr == NULL) {
+                // Break if reached the end of operations
+                break;
+            }
         }
 
-        // Process EXITING
+        // Set process state to EXITING
         wkgPCBPtr->currentState = EXITING;
         elapsedTime = accessTimer(LAP_TIMER, NULL);
         displayProcessState(configPtr, wkgPCBPtr, outputFile);
@@ -1013,7 +1009,6 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr) {
         processCounter++;
     }
 
-    // Print simulator end message
     elapsedTime = accessTimer(LAP_TIMER, NULL);
     if (configPtr->logToCode == LOGTO_FILE_CODE || configPtr->logToCode == LOGTO_BOTH_CODE) {
         fprintf(outputFile, "%1.6f, OS: Simulator End\n", elapsedTime);
@@ -1022,6 +1017,3 @@ void runSim(ConfigDataType *configPtr, OpCodeType *metaDataMstrPtr) {
         printf("%1.6f, OS: Simulator End\n", elapsedTime);
     }
 }
-
-
-
