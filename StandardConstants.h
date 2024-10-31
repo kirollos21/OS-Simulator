@@ -1,3 +1,7 @@
+//  File: StandardConstants.h
+//  Project: Sim03
+//  Secret ID: 708996
+
 // Preprocessor directives
 #ifndef StandardConstants_h
 #define StandardConstants_h

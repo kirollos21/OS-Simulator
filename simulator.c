@@ -1,16 +1,9 @@
-/**
- * Driver code for running the simulator
- */
+//  File: simulator.c
+//  Project: Sim03
+//  Secret ID: 708996
 
 #include "simulator.h"
 
-/**
- * Copies the contents of a source ConfigDataType struct to a destination
- * ConfigDataType struct
- * @param dest Pointer to the destination ConfigDataType struct
- * @param src Pointer to the source ConfigDataType struct
- * @return void
- */
 void copyConfigData(ConfigDataType *dest, ConfigDataType *src)
 {
   dest->version = src->version;
@@ -25,12 +18,6 @@ void copyConfigData(ConfigDataType *dest, ConfigDataType *src)
   copyString(dest->logToFileName, src->logToFileName);
 }
 
-/**
- * Add a new LOGnode to a linked list of LOGnodes.
- * @param local_ptr Pointer to the current node in the linked list.
- * @param txt_input String containing the log data to add to the new node.
- * @return LOGnode* Pointer to the updated linked list
- */
 LOGnode *LOGnode_add(LOGnode *local_ptr, char *txt_input)
 {
   LOGnode *new_ptr;
@@ -48,11 +35,6 @@ LOGnode *LOGnode_add(LOGnode *local_ptr, char *txt_input)
   }
 }
 
-/**
- * Deletes the linked list of LOG nodes recursively.
- * @param local_ptr The pointer to the first LOG node in the linked list.
- * @return Returns a NULL pointer after deleting all nodes in the linked list.
- */
 LOGnode *LOGnode_del(LOGnode *local_ptr)
 {
   if (!local_ptr)
@@ -68,16 +50,6 @@ LOGnode *LOGnode_del(LOGnode *local_ptr)
   return ZERO;
 }
 
-/**
- * Dumps the log information to a file or monitor.
- * @param trigger Integer value that represents the trigger point of the log
- * operation.
- * @param config_dataptr Pointer to a ConfigDataType structure that contains the
- * configuration data for the simulation.
- * @param txt_input Pointer to a character string that contains the text to be
- * logged.
- * @return void
- */
 void LOGdump(int trigger, ConfigDataType *config_dataptr, char *txt_input)
 {
   char outputString[MAX_STR_LEN];
@@ -168,14 +140,6 @@ void LOGdump(int trigger, ConfigDataType *config_dataptr, char *txt_input)
   }
 }
 
-/*
- * Adds a new PCB node to the linked list in ascending order of the start time
- * of its OpCodeList.
- * @param local_ptr A pointer to the head of the linked list to add the new node
- * to.
- * @param new_ptr A pointer to the new PCB node to add to the linked list.
- * @return A pointer to the head of the updated linked list.
- */
 PCBdata *PCBnode_add(PCBdata *local_ptr, PCBdata *new_ptr)
 {
   PCBdata *wkg_ptr;
@@ -200,11 +164,6 @@ PCBdata *PCBnode_add(PCBdata *local_ptr, PCBdata *new_ptr)
   return local_ptr;
 }
 
-/**
- * Deletes all the nodes in the linked list pointed to by local_ptr.
- * @param local_ptr A pointer to the head of the linked list to be deleted.
- * @return PCBdata* A null pointer is returned.
- */
 PCBdata *PCBnode_del(PCBdata *local_ptr)
 {
   if (local_ptr)
@@ -215,13 +174,6 @@ PCBdata *PCBnode_del(PCBdata *local_ptr)
   return ZERO;
 }
 
-/**
- * Finds a PCB node with the given PID.
- * @param local_ptr Pointer to the head node of the PCB linked list.
- * @param PCB_PID The PID to search for in the PCB linked list.
- * @return A pointer to the PCB node with the specified PID, or NULL if not
- * found.
- */
 PCBdata *PCBnode_pid(PCBdata *local_ptr, int PCB_PID)
 {
   while (local_ptr)
@@ -235,13 +187,6 @@ PCBdata *PCBnode_pid(PCBdata *local_ptr, int PCB_PID)
   return ZERO;
 }
 
-/**
- * Creates a Process Control Block (PCB) for each application in the given
- * metadata.
- * @param config_dataptr A pointer to the configuration data.
- * @param md_head_ptr A pointer to the metadata for the current run.
- * @return A pointer to the head of the PCB list.
- */
 PCBdata *PCBcreate(ConfigDataType *config_dataptr, OpCodeType *md_head_ptr)
 {
   PCBdata *new_ptr;
@@ -312,13 +257,6 @@ PCBdata *PCBcreate(ConfigDataType *config_dataptr, OpCodeType *md_head_ptr)
   free(new_ptr);
 }
 
-/**
- * Parse the PCB linked list to find the next process ID to execute based on the
- * scheduling algorithm
- * @param config_dataptr A pointer to the configuration data struct
- * @param local_ptr A pointer to the head of the PCB linked list
- * @return int The PID of the next process to execute
- */
 int PCBparse(ConfigDataType *config_dataptr, PCBdata *local_ptr)
 {
   int PCBid = ZERO;
@@ -433,13 +371,6 @@ int PCBparse(ConfigDataType *config_dataptr, PCBdata *local_ptr)
   return minId;
 }
 
-/**
- * Updates the state of all PCBs in a linked list that are in the NEW_STATE to
- * READY_STATE if their start time has passed.
- * @param config_dataptr A pointer to the configuration data struct.
- * @param local_ptr A pointer to the head of the linked list of PCBs.
- * @return void.
- */
 void PCBstate(ConfigDataType *config_dataptr, PCBdata *local_ptr)
 {
   char timeString[MAX_STR_LEN];
@@ -464,11 +395,6 @@ void PCBstate(ConfigDataType *config_dataptr, PCBdata *local_ptr)
   }
 }
 
-/**
- * Displays the contents of a linked list of Process Control Blocks (PCBs).
- * @param head_ptr A pointer to the head of the linked list of PCBs.
- * @return void.
- */
 void PCBdisplay(PCBdata *head_ptr)
 {
   PCBdata *wkg_ptr;
@@ -496,19 +422,13 @@ void PCBdisplay(PCBdata *head_ptr)
   }
 }
 
-/**
- * Executes a process according to its cycle time and quantum time.
- * @param CNF_ptr A pointer to the configuration data structure.
- * @param OPC_ptr A pointer to the operation code data structure.
- * @param PCB_ptr A pointer to the process control block data structure.
- */
 void PROCthread(ConfigDataType *CNF_ptr, OpCodeType *OPC_ptr, PCBdata *PCB_ptr)
 {
   char reportString[MAX_STR_LEN];
   PCBdata *PCB_wkg_ptr;
   int oneCycle, cyclesToRun, quantumCount;
-  _Bool isPreemptive, cont;
-  _Bool interrupt = false;
+  bool isPreemptive, cont;
+  bool interrupt = false;
 
   oneCycle = CNF_ptr->procCycleRate;
   quantumCount = CNF_ptr->quantumCycles;
@@ -548,15 +468,7 @@ void PROCthread(ConfigDataType *CNF_ptr, OpCodeType *OPC_ptr, PCBdata *PCB_ptr)
   OPC_ptr->intArg2 = cyclesToRun;
 }
 
-/**
- * Runs I/O operation on a process based on its operation type.
- * @param config_dataptr Pointer to configuration data
- * @param OPC_ptr Pointer to the OpCodeType struct for the process
- * @param PCB_ptr Pointer to the PCBdata struct for the process
- * @return void
- */
-void IOthread(ConfigDataType *config_dataptr, OpCodeType *OPC_ptr,
-              PCBdata *PCB_ptr)
+void IOthread(ConfigDataType *config_dataptr, OpCodeType *OPC_ptr, PCBdata *PCB_ptr)
 {
   char reportString[MAX_STR_LEN];
   PCBdata *local_ptr;
@@ -584,13 +496,6 @@ void IOthread(ConfigDataType *config_dataptr, OpCodeType *OPC_ptr,
   }
 }
 
-/**
- * A wrapper function that is passed to the pthread_create function to create an
- * IO thread.
- * @param arg A pointer to an array of three void pointers containing
- * ConfigDataType, OpCodeType and PCBdata structs in that order.
- * @return void* This function does not return anything.
- */
 void *IOthread_wrapper(void *arg)
 {
   // refer to IOargs in simulator.h for definitions on thread args
@@ -604,12 +509,6 @@ void *IOthread_wrapper(void *arg)
   pthread_exit(NULL);
 }
 
-/**
- * Copies the content of one OpCodeType struct to another.
- * @param destination A pointer to the destination OpCodeType struct.
- * @param source A pointer to the source OpCodeType struct.
- * @return void
- */
 void OPCcopy(OpCodeType *destination, OpCodeType *source)
 {
   destination->pid = source->pid;
@@ -623,13 +522,6 @@ void OPCcopy(OpCodeType *destination, OpCodeType *source)
   return;
 }
 
-/**
- * Adds a new node with interrupt OpCodeType to the end of the linked list.
- * @param local_ptr Pointer to the head of the linked list of OpCodeType.
- * @param new_ptr Pointer to the new OpCodeType node to be added.
- * @return OpCodeType* Pointer to the head of the updated linked list of
- * OpCodeType.
- */
 OpCodeType *addInterrupt(OpCodeType *local_ptr, OpCodeType *new_ptr)
 {
   OpCodeType *addedNode;
@@ -648,13 +540,6 @@ OpCodeType *addInterrupt(OpCodeType *local_ptr, OpCodeType *new_ptr)
   }
 }
 
-/**
- * Removes a node from a linked list of OpCodeType nodes.
- * @param headPtr Pointer to the head node of the linked list of OpCodeType
- * nodes.
- * @param removedPtr Pointer to the node to be removed.
- * @return OpCodeType* Pointer to the head node of the updated linked list.
- */
 OpCodeType *removeOpCodeNode(OpCodeType *headPtr, OpCodeType *removedPtr)
 {
   OpCodeType *wkgPtr;
@@ -675,21 +560,12 @@ OpCodeType *removeOpCodeNode(OpCodeType *headPtr, OpCodeType *removedPtr)
   return headPtr;
 }
 
-/**
- * Manages interrupts and performs necessary operations.
- * @param CTRL_ptr Pointer to an Interrupts object.
- * @param OPC_ptr Pointer to an OpCodeType object.
- * @param PCB_ptr Pointer to a PCBdata object.
- * @param config_dataptr Pointer to a ConfigDataType object.
- * @return Boolean value indicating whether an interrupt was handled.
- */
-_Bool interruptMNGR(Interrupts CTRL_ptr, OpCodeType *OPC_ptr, PCBdata *PCB_ptr,
-                    ConfigDataType *config_dataptr)
+bool interruptMNGR(Interrupts CTRL_ptr, OpCodeType *OPC_ptr, PCBdata *PCB_ptr, ConfigDataType *config_dataptr)
 {
   char reportString[MAX_STR_LEN];
   double currentTime = 0.0;
   PCBdata *local_ptr = NULL;
-  _Bool returnVal = false;
+  bool returnVal = false;
   OpCodeType *delOPC = NULL;
   OpCodeType *wkgOPC_ptr = NULL;
 
@@ -785,18 +661,7 @@ _Bool interruptMNGR(Interrupts CTRL_ptr, OpCodeType *OPC_ptr, PCBdata *PCB_ptr,
   return returnVal;
 }
 
-/**
- * Allocates memory for a new MEMnode and initializes its fields.
- * @param physStart The starting physical address of the memory block.
- * @param physEnd The ending physical address of the memory block.
- * @param memState The state of the memory block: 0 for used, 1 for open.
- * @param procNum The number of the process using the memory block.
- * @param logStart The starting logical address of the memory block.
- * @param logStop The ending logical address of the memory block.
- * @return A pointer to the newly allocated MEMnode.
- */
-MEMnode *MEMnode_add(int physStart, int physEnd, int memState, int procNum,
-                     int logStart, int logStop)
+MEMnode *MEMnode_add(int physStart, int physEnd, int memState, int procNum, int logStart, int logStop)
 {
   MEMnode *result = (MEMnode *)malloc(sizeof(MEMnode));
   result->physicalStart = physStart;
@@ -809,19 +674,7 @@ MEMnode *MEMnode_add(int physStart, int physEnd, int memState, int procNum,
   return result;
 }
 
-/**
- * @brief Recycles a memory node with the provided information.
- * @param tempNode The memory node to recycle.
- * @param memState The state of the memory block after recycling.
- * @param procNum The process number associated with the memory block.
- * @param phyStart The starting physical address of the memory block.
- * @param phyStop The ending physical address of the memory block.
- * @param logStart The starting logical address of the memory block.
- * @param logStop The ending logical address of the memory block.
- * @return void
- */
-void MEMnode_recycle(MEMnode *tempNode, int memState, int procNum, int phyStart,
-                     int phyStop, int logStart, int logStop)
+void MEMnode_recycle(MEMnode *tempNode, int memState, int procNum, int phyStart, int phyStop, int logStart, int logStop)
 {
   tempNode->memBlockState = memState;
   tempNode->processNumber = procNum;
@@ -831,12 +684,6 @@ void MEMnode_recycle(MEMnode *tempNode, int memState, int procNum, int phyStart,
   tempNode->logicalStop = logStop;
 }
 
-/**
- * @brief Repairs the memory blocks in the linked list by combining adjacent
- * free memory blocks
- * @param MEM_ptr Pointer to the head of the linked list
- * @return void
- */
 void MEMrepair(MEMnode *MEM_ptr)
 {
   MEMnode *removePtr;
@@ -859,13 +706,7 @@ void MEMrepair(MEMnode *MEM_ptr)
   }
 }
 
-/**
- * @brief Displays information about a linked list of memory blocks
- * @param MEM_ptr Pointer to the head node of the linked list of memory blocks
- * @param output_str String to be displayed as a header before displaying memory
- * information
- */
-void MEMdisplay(MEMnode *MEM_ptr, char *output_str, _Bool output_flag)
+void MEMdisplay(MEMnode *MEM_ptr, char *output_str, bool output_flag)
 {
   char output_string[MAX_STR_LEN];
   MEMnode *wkgMemPtr;
@@ -905,16 +746,7 @@ void MEMdisplay(MEMnode *MEM_ptr, char *output_str, _Bool output_flag)
   }
 }
 
-/**
- * Manages memory operations such as allocation, access and clearing
- * @param config_dataptr A pointer to ConfigDataType struct containing the
- * configuration data
- * @param OPC_ptr A pointer to OpCodeType struct containing the operation code
- * data
- * @return _Bool Returns true if the memory operation was successful, otherwise
- * false
- */
-_Bool MMU(ConfigDataType *config_dataptr, OpCodeType *OPC_ptr)
+bool MMU(ConfigDataType *config_dataptr, OpCodeType *OPC_ptr)
 {
   char displayStr[MAX_STR_LEN];
   MEMnode *tempNodePtr;
@@ -924,7 +756,7 @@ _Bool MMU(ConfigDataType *config_dataptr, OpCodeType *OPC_ptr)
   int processId;
   int logicalHigh;
   int requestedMemory;
-  _Bool displayFlag = config_dataptr->memDisplay;
+  bool displayFlag = config_dataptr->memDisplay;
   int highestMemLoc = config_dataptr->memAvailable - ONE;
   int lowestMemLoc = ZERO;
   MEMnode *wkgMemPtr;
@@ -1082,19 +914,12 @@ _Bool MMU(ConfigDataType *config_dataptr, OpCodeType *OPC_ptr)
   }
 }
 
-/**
- * CPUidle - function to simulate idle state of CPU when all processes are
- * blocked
- * @param config_dataptr pointer to configuration data structure
- * @param PCB_ptr pointer to process control block data structure
- * @return void
- */
 void CPUidle(ConfigDataType *config_dataptr, PCBdata *PCB_ptr)
 {
   char reportString[MAX_STR_LEN];
   OpCodeType *temp_ptr = NULL;
   int oneCycle = config_dataptr->procCycleRate;
-  _Bool interruptFound = false;
+  bool interruptFound = false;
 
   copyString(reportString, "OS: CPU idle, all active processes blocked");
   LOGdump(ADD_LOG, config_dataptr, reportString);
@@ -1108,11 +933,6 @@ void CPUidle(ConfigDataType *config_dataptr, PCBdata *PCB_ptr)
   LOGdump(ADD_LOG, config_dataptr, reportString);
 }
 
-/**
- * Runs the simulation using the given configuration and meta data.
- * @param config_dataptr Pointer to the configuration data.
- * @param meta_data_ptr Pointer to the meta data.
- */
 void runSim(ConfigDataType *config_dataptr, OpCodeType *meta_data_ptr)
 {
   char reportString[MAX_STR_LEN];
@@ -1123,9 +943,9 @@ void runSim(ConfigDataType *config_dataptr, OpCodeType *meta_data_ptr)
   OpCodeType *OPC_ptr = NULL;
 
   int currentPID = NULL_PID;
-  _Bool isPreemptive;
+  bool isPreemptive;
   int lastPid = NULL_PID;
-  _Bool runFlag = true;
+  bool runFlag = true;
   // IO thread arguments
   void *IO_args[IO_ARGS];
   // IO thread

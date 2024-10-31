@@ -108,4 +108,77 @@ typedef enum ConfigCodeMessages
   CFG_LOG_FILE_NAME_CODE
 } ConfigCodeMessages;
 
+typedef enum IOargs
+{
+  // represents total number of arguments to pass into IO function
+  IO_ARGS = 2,
+  // represents individual arguments for IO function
+  IO_ARG_ONE = 0,
+  IO_ARG_TWO = 1,
+  IO_ARG_THREE = 2
+
+} MiscDef;
+
+typedef enum ProcessState
+{
+  NEW_STATE = 0,
+  READY_STATE = 1,
+  RUNNING_STATE = 2,
+  BLOCKED_STATE = 3,
+  EXIT_STATE = 4
+} ProcessState;
+
+typedef enum MemState
+{
+  MEM_INIT = 0,
+  MEM_OPEN = 1,
+  MEM_USED = 2
+} MemState;
+
+typedef enum Interrupts
+{
+  INIT_MNGR = 0,
+  INTERRUPT_CHECK = 1,
+  SET_IO_START = 2,
+  RESOLVE_INTERRUPTS = 3
+} Interrupts;
+
+typedef struct PCBdata
+{
+  int pid;
+  int state;
+  int time_left;
+  double time_start;
+  bool quant_time;
+
+  struct OpCodeTypeStruct *OCcurr;
+  struct OpCodeTypeStruct *OClist;
+  struct MEMnode *MEMlist;
+  struct PCBdata *next_ptr;
+} PCBdata;
+
+typedef struct MEMnode
+{
+  int physicalStart;
+  int physicalStop;
+  int memBlockState;
+  int processNumber;
+  int logicalStart;
+  int logicalStop;
+  struct MEMnode *next_ptr;
+} MEMnode;
+
+typedef struct LOGnode
+{
+  char LOG_out[MAX_STR_LEN];
+  struct LOGnode *next_ptr;
+} LOGnode;
+
+typedef enum LOGtrig
+{
+  INIT_LOG = 0,
+  ADD_LOG = 1,
+  DUMP_LOG = 2
+} LOGtrig;
+
 #endif
