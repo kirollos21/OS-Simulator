@@ -1,13 +1,20 @@
-/**
- * Command Line Parser driver for sim01, sim.c contains the driver for
- * running the sim.
- */
+//  File: OS_SimDriver.c
+//  Project: Sim01
+//  Secret ID: 708996
+
 #include "OS_SimDriver.h"
 
-/**
- * Function to return the usage of sim01
- */
-void usage()
+/*
+Name: showCommandLineFormat
+Process: displays command Line format as assistance to user
+Function Input/Parameters: none
+Function Output/Parameters: none
+Function Output/Returned: none
+Device Input/device: none
+Device Output/monitor: data displayed as specified
+Dependencies: printf
+*/
+void showCommandLineFormat()
 {
   printf("Command Line Format:\n");
   printf("     sim_0x [-dc] [-dm] [-rs] <config file name>\n");
@@ -17,9 +24,18 @@ void usage()
   printf("     required config file name\n");
 }
 
-/**
- * clears the cmd line struct
- */
+/*
+Name: clearCmdLineStruct
+Process: sets command line structure data to defaults
+         Booleans to false, fileName to empty string
+Function Input/Parameters: pointer to command line structure (CmdLineData *)
+Function Output/Parameters: pointer to command line structure (CmdLineData *)
+                            with updated members
+Function Output/Returned: none
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: none
+*/
 void clearCmdLineStruct(CmdLineData *clDataPtr)
 {
   clDataPtr->programRunFlag = false;
@@ -29,14 +45,30 @@ void clearCmdLineStruct(CmdLineData *clDataPtr)
   clDataPtr->fileName[0] = NULL_CHAR;
 }
 
-/**
- * process cmd line args
+/*
+ Name: processCmdLine
+ Process:   checks for at least two arguments,
+            then sets Booleans depending on command Line switches
+            which can be in any order,
+            also captures config file name which must be the last argument
+ Function Input/Parameters: number of arguments (int),
+                            vector of arguments (char **o<
+ Function Output/Parameters:    pointer to command Line structure (CmdLineData *)
+                                with updated members,
+                                set to default values if failure
+                                to capture arguments
+ Function Output/Returned:  Boolean result of argument capture,
+                            true if at least one switch and config file name,
+                            false otherwise
+ Device Input/device: none
+ Device Output/device: none
+ Dependencies: tbd
  */
-_Bool processCmdLine(int numArgs, char **strVector, CmdLineData *clDataPtr)
+bool processCmdLine(int numArgs, char **strVector, CmdLineData *clDataPtr)
 {
   clearCmdLineStruct(clDataPtr);
-  _Bool atLeastOneSwitchFlag = false;
-  _Bool correctConfigFileFlag = false;
+  bool atLeastOneSwitchFlag = false;
+  bool correctConfigFileFlag = false;
   int argIndex = 1;
   int fileStrLen;
   int fileStrSubLoc;
@@ -93,7 +125,7 @@ int main(int argc, char **argv)
   OpCodeType *metaDataPtr = NULL;
   char errorMessage[MAX_STR_LEN];
   CmdLineData cmdLineData;
-  _Bool configUploadSuccess = false;
+  bool configUploadSuccess = false;
 
   printf("Simulator Program\n");
   printf("=================\n\n");
@@ -141,7 +173,7 @@ int main(int argc, char **argv)
   }
   else
   {
-    usage();
+    showCommandLineFormat();
   }
 
   printf("\n\nSimulator Program End.\n\n");

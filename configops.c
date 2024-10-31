@@ -1,11 +1,19 @@
-/**
- * Configuration Data Operations
- */
+//  File: configops.c
+//  Project: Sim03
+//  Secret ID: 708996
+
 #include "configops.h"
 
-/**
- * Display configuration data
- */
+/*
+Name: displayConfigData
+Process: screen dump/display of all config data
+Function Input/Parameters: pointer to config data structure (ConfigDataType *)
+Function Output/Parameters: none
+Function Output/Returned: none
+Device Input/Keyboard: none
+Device Output/Monitor: displayed as specified
+Dependencies: tbd
+*/
 void displayConfigData(ConfigDataType *configData)
 {
   char displayString[STD_STR_LEN];
@@ -33,9 +41,17 @@ void displayConfigData(ConfigDataType *configData)
   printf("Log File Name          : %s\n\n", configData->logToFileName);
 }
 
-/**
- * Clear config data struct
- */
+/*
+Name: clearConfigData
+Process: frees dynamically allocated config data structure
+         if it has not already been freed
+Function Input/Parameters: pointer to config data structure (ConfigDataType *)
+Function Output/Parameters: none
+Function Output/Returned: NULL (ConfigDataType *)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: tbd
+*/
 ConfigDataType *clearConfigData(ConfigDataType *configData)
 {
   if (configData != NULL)
@@ -46,11 +62,18 @@ ConfigDataType *clearConfigData(ConfigDataType *configData)
   return NULL;
 }
 
-/**
- * Retrieves configuration data described in a .cnf file
- */
-_Bool getConfigData(const char *fileName, ConfigDataType **configData,
-                    char *endStateMsg)
+/*
+Name: getConfigData
+Process: Driver function for capturing configuration data from a config file
+Function Input/Parameters: file name (const char *)
+Function Output/Parameters: pointer to config data pointer (ConfigDataType **),
+                            end/result state message pointer (char *)
+Function Output/Returned: Boolean result of data access operation (bool)
+Device Input/Keyboard: config data uploaded
+Device Output/Monitor: none
+Dependencies: tbd
+*/
+bool getConfigData(const char *fileName, ConfigDataType **configData, char *endStateMsg)
 {
   const int NUM_DATA_LINES = 10;
   const char READ_ONLY_FLAG[] = "r";
@@ -196,9 +219,17 @@ _Bool getConfigData(const char *fileName, ConfigDataType **configData,
   return true;
 }
 
-/**
- * Config code to string
- */
+/*
+Name: configCodeToString
+Process: utility function converts configuration code numbers
+         to the string they represent
+Function Input/Parameters: configuration code (int)
+Function Output/Parameters: resulting output string (char *)
+Function Output/Returned: none
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: copyString
+*/
 void configCodeToString(int code, char *outString)
 {
   char displayStrings[8][10] = {"SJF-N",  "SRTF-P",  "FCFS-P", "RR-P",
@@ -246,9 +277,17 @@ void stripTrailingSpaces(char *str)
   }
 }
 
-/**
- * get line code
- */
+/*
+Name: getDataLineCode
+Process: converts leader lines string to configuration code value
+         (all config file leader lines)
+Function Input/Parameters: config leader line string (const char *)
+Function Output/Parameters: none
+Function Output/Returned: configuration code value (ConfigCodeMessages)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: compareString
+*/
 ConfigCodeMessages getDataLineCode(const char *dataBuffer)
 {
   if (compareString(dataBuffer, "Version/Phase") == STR_EQ)
@@ -309,13 +348,23 @@ ConfigDataCodes getLogToCode(const char *lowerCaseLogToStr)
   return returnVal;
 }
 
-/**
- * function to parse config data values in a given interval
- */
-_Bool valueInRange(int lineCode, int intVal, double doubleVal,
-                   const char *lowerCaseStringVal)
+/*
+Name: valueInRange
+Process: checks for config data values in range, including string values
+         (all config data values)
+Function Input/Parameters: line code number for specific config value (int),
+                           integer value, as needed (int),
+                           double value, as needed (double),
+                           string value, as needed (const char *)
+Function Output/Parameters: none
+Function Output/Returned: Boolean result of range test (bool)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: getStringLength
+*/
+bool valueInRange(int lineCode, int intVal, double doubleVal, const char *lowerCaseStringVal)
 {
-  _Bool result = true;
+  bool result = true;
   switch (lineCode)
   {
   case CFG_VERSION_CODE:

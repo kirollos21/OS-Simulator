@@ -1,7 +1,6 @@
 #  File: simulator_mf
-#  Project: Sim02
+#  Project: Sim03
 #  Secret ID: 708996
-#  Date: 09/29/2024
 
 CC = gcc
 DEBUG = -g

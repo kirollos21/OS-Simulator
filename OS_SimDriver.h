@@ -1,12 +1,19 @@
+//  File: OS_SimDriver.h
+//  Project: Sim01
+//  Secret ID: 708996
+
+// protect from multiple compiling
 #ifndef OS_SimDriver_h
 #define OS_SimDriver_h
 
-#include "StringUtils.h"
+// header files
+#include <stdio.h>
+#include "datatypes.h"
 #include "configops.h"
 #include "metadataops.h"
 #include "simulator.h"
-#include "datatypes.h"
-#include <stdio.h>
+#include "StringUtils.h"
+#include <stdbool.h>
 
 typedef enum
 {
@@ -14,31 +21,61 @@ typedef enum
   LAST_FOUR_LETTERS = 4
 } PRGRM_CONSTANTS;
 
-/**
- * Command Line Data struct
- */
+// Command Line struct for string command line switch settings
 typedef struct CmdLineDataStruct
 {
-  _Bool programRunFlag;
-  _Bool configDisplayFlag;
-  _Bool mdDisplayFlag;
-  _Bool runSimFlag;
+  bool programRunFlag;
+  bool configDisplayFlag;
+  bool mdDisplayFlag;
+  bool runSimFlag;
   char fileName[STD_STR_LEN];
 } CmdLineData;
 
-/**
- * clear CMD Line struct
- */
+/*
+Name: clearCmdLineStruct
+Process: sets command line structure data to defaults
+         Booleans to false, fileName to empty string
+Function Input/Parameters: pointer to command line structure (CmdLineData *)
+Function Output/Parameters: pointer to command line structure (CmdLineData *)
+                            with updated members
+Function Output/Returned: none
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: none
+*/
 void clearCmdLineStruct(CmdLineData *clDataPtr);
 
-/**
- * Parse CMD Line
+/*
+ Name: processCmdLine
+ Process:   checks for at least two arguments,
+            then sets Booleans depending on command Line switches
+            which can be in any order,
+            also captures config file name which must be the last argument
+ Function Input/Parameters: number of arguments (int),
+                            vector of arguments (char **o<
+ Function Output/Parameters:    pointer to command Line structure (CmdLineData *)
+                                with updated members,
+                                set to default values if failure
+                                to capture arguments
+ Function Output/Returned:  Boolean result of argument capture,
+                            true if at least one switch and config file name,
+                            false otherwise
+ Device Input/device: none
+ Device Output/device: none
+ Dependencies: tbd
  */
-_Bool processCmdLine(int numArgs, char **strVector, CmdLineData *clDataPtr);
+bool processCmdLine(int numArgs, char **strVector, CmdLineData *clDataPtr);
 
-/**
- * Command Line Usage
- */
-void usage();
+/*
+Name: showCommandLineFormat
+Process: displays command Line format as assistance to user
+Function Input/Parameters: none
+Function Output/Parameters: none
+Function Output/Returned: none
+Device Input/device: none
+Device Output/monitor: data displayed as specified
+Dependencies: printf
+*/
+void showCommandLineFormat();
 
 #endif

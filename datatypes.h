@@ -1,11 +1,15 @@
+//  File: datatypes.h
+//  Project: Sim02
+//  Secret ID: 708996
+
 #ifndef datatypes_h
 #define datatypes_h
 
 #include "StandardConstants.h"
 #include <stdio.h>
+#include <stdbool.h>
 
-// enum representing numbers to avoid using numeric literals
-// that dont correspond to existing enums
+// GLOBAL CONSTANTS - may be used in other files
 typedef enum Numbers
 {
   ZERO = 0,
@@ -14,7 +18,6 @@ typedef enum Numbers
   THREE = 3
 } Numbers;
 
-// boolean enum for timer code from leverington
 typedef enum
 {
   True,
