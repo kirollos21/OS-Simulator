@@ -1,1187 +1,839 @@
-//  File: simulator.c
-//  Project: Sim03
-//  Secret ID: 708996
 
 #include "simulator.h"
 
-void copyConfigData(ConfigDataType *dest, ConfigDataType *src)
+/*
+    This function takes a ConfigDataType and OpCodeType,
+    Then it finds all the processes present in the OpCode
+    and creates a PCB for each process, logging all os
+    operations. Once all processes are found, run each process and
+    once ended end the simulation and print logs to file
+*/
+void runSim(ConfigDataType *configData, OpCodeType *metaData)
 {
-  dest->version = src->version;
-  copyString(dest->metaDataFileName, src->metaDataFileName);
-  dest->cpuSchedCode = src->cpuSchedCode;
-  dest->quantumCycles = src->quantumCycles;
-  dest->memDisplay = src->memDisplay;
-  dest->memAvailable = src->memAvailable;
-  dest->procCycleRate = src->procCycleRate;
-  dest->ioCycleRate = src->ioCycleRate;
-  dest->logToCode = src->logToCode;
-  copyString(dest->logToFileName, src->logToFileName);
-}
+    //print title
+    printf("Simulator Run\n");
+    printf("-------------\n");
 
-LOGnode *LOGnode_add(LOGnode *local_ptr, char *txt_input)
-{
-  LOGnode *new_ptr;
-  if (local_ptr)
-  {
-    local_ptr->next_ptr = LOGnode_add(local_ptr->next_ptr, txt_input);
-    return local_ptr;
-  }
-  else
-  {
-    new_ptr = (LOGnode *)malloc(sizeof(LOGnode));
-    copyString(new_ptr->LOG_out, txt_input);
-    new_ptr->next_ptr = NULL;
-    return new_ptr;
-  }
-}
+    //initialize variables
+    char timerString[MIN_STR_LEN];
+    char buffer[MAX_OUTPUT_STRING_LENGTH];
+    accessTimer(ZERO_TIMER, timerString);
 
-LOGnode *LOGnode_del(LOGnode *local_ptr)
-{
-  if (!local_ptr)
-  {
-    return ZERO;
-  }
-  else
-  {
-    LOGnode_del(local_ptr->next_ptr);
-  }
+    pthread_t loadtid;  /* the thread identifier */
+    pthread_attr_t loadattr; /* set of thread attributes */
+    pthread_attr_init(&loadattr); /* Set thread */
+    int loadTimeBuffer = 100; /* Buffer for loading symbol */
 
-  free(local_ptr);
-  return ZERO;
-}
+    /*
+        Create main memory list
+    */
+    memoryAllocationBlock* mainMemory = NULL;
 
-void LOGdump(int trigger, ConfigDataType *config_dataptr, char *txt_input)
-{
-  char outputString[MAX_STR_LEN];
-  char timeString[MIN_STR_LEN];
-  char WRITE_FLAG[TWO];
-  int temp_trigger;
-  FILE *outFilePtr;
-  static LOGnode *log_ptr = NULL;
-  LOGnode *wkg_log_ptr = NULL;
-
-  copyString(WRITE_FLAG, "w");
-  // check if start of line = OS:
-  getSubString(outputString, txt_input, ZERO, TWO);
-  copyString(outputString, "\n ");
-
-  if (trigger == INIT_LOG)
-  {
-    log_ptr = NULL;
-    accessTimer(LAP_TIMER, timeString);
-    temp_trigger = ONE;
-
-    if (config_dataptr->logToCode == LOGTO_FILE_CODE)
+    //set buffer for initial output
+    sprintf(buffer, "%s, OS: Simulator start\n", timerString);
+    //print initial output
+    /*
+        This kind of block will appear when deciding whether to print to monitor or not
+    */
+    if (configData->logToCode == LOGTO_BOTH_CODE || configData->logToCode == LOGTO_MONITOR_CODE)
     {
-      printf("Simulator running with output to file\n");
-    }
-  }
-  else
-  {
-    accessTimer(LAP_TIMER, timeString);
-    temp_trigger = trigger;
-  }
-
-  if (temp_trigger == ADD_LOG)
-  {
-    concatenateString(outputString, timeString);
-    concatenateString(outputString, ", ");
-    concatenateString(outputString, txt_input);
-    if (config_dataptr->logToCode == LOGTO_FILE_CODE ||
-        config_dataptr->logToCode == LOGTO_BOTH_CODE)
-    {
-      log_ptr = LOGnode_add(log_ptr, outputString);
-    }
-
-    if (config_dataptr->logToCode == LOGTO_BOTH_CODE ||
-        config_dataptr->logToCode == LOGTO_MONITOR_CODE)
-    {
-      printf(outputString);
-    }
-  }
-  else
-  {
-    if (config_dataptr->logToCode == LOGTO_FILE_CODE ||
-        config_dataptr->logToCode == LOGTO_BOTH_CODE)
-    {
-      wkg_log_ptr = log_ptr;
-      outFilePtr = fopen(config_dataptr->logToFileName, WRITE_FLAG);
-      fprintf(outFilePtr,
-              "\n==================================================\n");
-      fprintf(outFilePtr, "Simulator Log File Header\n\n");
-      fprintf(outFilePtr, "File Name                       : %s\n",
-              config_dataptr->metaDataFileName);
-      configCodeToString(config_dataptr->cpuSchedCode, outputString);
-      fprintf(outFilePtr, "CPU Scheduling                  : %s\n",
-              outputString);
-      fprintf(outFilePtr, "Quantum Cycles                  : %d\n",
-              config_dataptr->quantumCycles);
-      fprintf(outFilePtr, "Memory Available (KB)           : %d\n",
-              config_dataptr->memAvailable);
-      fprintf(outFilePtr, "Processor Cycle Rate (ms/cycle) : %d\n",
-              config_dataptr->procCycleRate);
-      fprintf(outFilePtr, "I/O Cycle Rate (ms/cycle)       : %d\n\n",
-              config_dataptr->ioCycleRate);
-      fprintf(outFilePtr, "================\n");
-      fprintf(outFilePtr, "Begin Simulation\n\n");
-
-      while (wkg_log_ptr)
-      {
-        fprintf(outFilePtr, "%s", wkg_log_ptr->LOG_out);
-        wkg_log_ptr = wkg_log_ptr->next_ptr;
-      }
-
-      fprintf(outFilePtr, "\nEnd Simulation - Complete\n");
-      fprintf(outFilePtr, "=========================\n\n");
-
-      fclose(outFilePtr);
-      log_ptr = LOGnode_del(log_ptr);
-    }
-  }
-}
-
-PCBdata *PCBnode_add(PCBdata *local_ptr, PCBdata *new_ptr)
-{
-  PCBdata *wkg_ptr;
-
-  if (local_ptr && new_ptr->OClist->intArg2 >= local_ptr->OClist->intArg2)
-  {
-    for (wkg_ptr = local_ptr;
-         wkg_ptr->next_ptr &&
-         new_ptr->OClist->intArg2 >= wkg_ptr->next_ptr->OClist->intArg2;
-         wkg_ptr = wkg_ptr->next_ptr)
-    {
-      ;
-    }
-    new_ptr->next_ptr = wkg_ptr->next_ptr;
-    wkg_ptr->next_ptr = new_ptr;
-  }
-  else
-  {
-    new_ptr->next_ptr = local_ptr;
-    return new_ptr;
-  }
-  return local_ptr;
-}
-
-PCBdata *PCBnode_del(PCBdata *local_ptr)
-{
-  if (local_ptr)
-  {
-    PCBnode_del(local_ptr->next_ptr);
-    free(local_ptr);
-  }
-  return ZERO;
-}
-
-PCBdata *PCBnode_pid(PCBdata *local_ptr, int PCB_PID)
-{
-  while (local_ptr)
-  {
-    if (local_ptr->pid == PCB_PID)
-    {
-      return local_ptr;
-    }
-    local_ptr = local_ptr->next_ptr;
-  }
-  return ZERO;
-}
-
-PCBdata *PCBcreate(ConfigDataType *config_dataptr, OpCodeType *md_head_ptr)
-{
-  PCBdata *new_ptr;
-  PCBdata *head_ptr = NULL;
-  int op_time = ZERO;
-  int pidSet = NEW_STATE;
-
-  if (compareString(md_head_ptr->command, "sys") ||
-      compareString(md_head_ptr->strArg1, "start"))
-  {
-    return ZERO;
-  }
-
-  for (md_head_ptr = md_head_ptr->next_ptr;
-       compareString(md_head_ptr->command, "sys") &&
-       compareString(md_head_ptr->strArg1, "end");
-       md_head_ptr = md_head_ptr->next_ptr)
-  {
-    if (!compareString(md_head_ptr->command, "app") &&
-        !compareString(md_head_ptr->strArg1, "start"))
-    {
-      new_ptr = (PCBdata *)malloc(sizeof(PCBdata) + 1);
-      new_ptr->pid = pidSet;
-      new_ptr->state = NEW_STATE;
-      new_ptr->time_left = ZERO;
-      new_ptr->time_start = md_head_ptr->intArg2;
-      new_ptr->quant_time = true;
-      new_ptr->OCcurr = NULL;
-      new_ptr->OClist = md_head_ptr;
-      new_ptr->next_ptr = NULL;
-
-      while (compareString(md_head_ptr->command, "app") ||
-             compareString(md_head_ptr->strArg1, "end"))
-      {
-        if (compareString(md_head_ptr->command, "mem"))
-        {
-          if (compareString(md_head_ptr->command, "dev"))
-          {
-            op_time = md_head_ptr->intArg2 * config_dataptr->procCycleRate;
-          }
-
-          else
-          {
-            op_time = md_head_ptr->intArg2 * config_dataptr->ioCycleRate;
-          }
-
-          new_ptr->time_left = new_ptr->time_left + op_time;
-
-          if (config_dataptr->cpuSchedCode &&
-              config_dataptr->cpuSchedCode != CPU_SCHED_FCFS_N_CODE)
-          {
-            md_head_ptr->intArg3 = PREEMPTIVE_CODE;
-          }
-
-          else
-          {
-            md_head_ptr->intArg3 = NON_PREEMPTIVE_CODE;
-          }
-        }
-        md_head_ptr->pid = pidSet;
-        md_head_ptr = md_head_ptr->next_ptr;
-      }
-      head_ptr = PCBnode_add(head_ptr, new_ptr);
-      ++pidSet;
-    }
-  }
-  return head_ptr;
-  free(new_ptr);
-}
-
-int PCBparse(ConfigDataType *config_dataptr, PCBdata *local_ptr)
-{
-  int PCBid = ZERO;
-  int minTime = ZERO;
-  int minId = NULL_PID;
-  int loopCount = ZERO;
-  int newBlockedCount = ZERO;
-
-  if (config_dataptr->cpuSchedCode == CPU_SCHED_FCFS_P_CODE ||
-      config_dataptr->cpuSchedCode == CPU_SCHED_FCFS_N_CODE)
-  {
-    while (local_ptr)
-    {
-      if (local_ptr->state == READY_STATE)
-      {
-        return local_ptr->pid;
-      }
-      if (local_ptr->state == BLOCKED_STATE || !local_ptr->state)
-      {
-        ++newBlockedCount;
-      }
-      local_ptr = local_ptr->next_ptr;
-    }
-  }
-  else if (config_dataptr->cpuSchedCode == CPU_SCHED_RR_P_CODE)
-  {
-    local_ptr = PCBnode_pid(local_ptr, PCBid);
-    if (local_ptr->state != BLOCKED_STATE && local_ptr->state != EXIT_STATE &&
-        !local_ptr->quant_time)
-    {
-      local_ptr->quant_time = true;
-      return local_ptr->pid;
-    }
-    local_ptr->quant_time = true;
-
-    if (local_ptr->next_ptr)
-      local_ptr = local_ptr->next_ptr;
-
-    else
-      local_ptr = local_ptr;
-
-    PCBid = local_ptr->pid;
-
-    while (loopCount < TWO)
-    {
-      local_ptr = PCBnode_pid(local_ptr, PCBid);
-
-      if (local_ptr->state == READY_STATE)
-      {
-        return local_ptr->pid;
-      }
-      if (local_ptr->state == BLOCKED_STATE || !local_ptr->state)
-        ++newBlockedCount;
-
-      if (local_ptr->next_ptr)
-      {
-        local_ptr = local_ptr->next_ptr;
-      }
-      else
-      {
-        ++loopCount;
-      }
-      PCBid = local_ptr->pid;
-    }
-  }
-  else
-  {
-    while (local_ptr && local_ptr->state != READY_STATE)
-    {
-      if (!local_ptr->state || local_ptr->state == BLOCKED_STATE)
-      {
-        ++newBlockedCount;
-      }
-
-      local_ptr = local_ptr->next_ptr;
-    }
-
-    if (local_ptr)
-    {
-      minId = local_ptr->pid;
-      minTime = local_ptr->time_left;
-      local_ptr = local_ptr->next_ptr;
-    }
-
-    while (local_ptr)
-    {
-      if (local_ptr->state == READY_STATE && local_ptr->time_left < minTime)
-      {
-        minId = local_ptr->pid;
-        minTime = local_ptr->time_left;
-      }
-      else if (local_ptr->state == BLOCKED_STATE || !local_ptr->state)
-      {
-        ++newBlockedCount;
-      }
-      local_ptr = local_ptr->next_ptr;
-    }
-  }
-
-  if (minId < ZERO)
-  {
-    if (newBlockedCount < ONE)
-    {
-      minId = EXIT;
+        printf("%s", buffer);
     }
     else
     {
-      minId = WAIT;
+        printf("Outputting to File only: ");
+        pthread_create(&loadtid, &loadattr, printLoadingSymbol, &loadTimeBuffer);
     }
-  }
+    
+    //create pointer to processes
+    ProcessesList* Processes = NULL;
+    ProcessesList* tempProcessPtr = NULL;
+    ProcessesList* clearProcessPtr = NULL;
 
-  return minId;
-}
+    //initialize string list;
+    stringList* strings = (stringList*)malloc(sizeof(stringList));
+    copyString(strings->string, buffer);
+    strings->nextString = NULL;
+    stringList* tempStrPtr = strings;
+    stringList* clearStrPtr = strings;
 
-void PCBstate(ConfigDataType *config_dataptr, PCBdata *local_ptr)
-{
-  char timeString[MAX_STR_LEN];
-  char reportString[MAX_STR_LEN];
-  double sim_time = 0.0;
-  PCBdata *PCB_ptr;
+    //find all processes and creates the PCB's for them
+    Processes = findAndCreateProcesses(Processes, metaData, configData);
+    tempProcessPtr = Processes;
+    clearProcessPtr = Processes;
 
-  for (PCB_ptr = local_ptr; PCB_ptr != NULL; PCB_ptr = PCB_ptr->next_ptr)
-  {
-    if (PCB_ptr->state == NEW_STATE)
+
+    //set Processes to READY once processes are found
+    /*
+        THIS IS THE CURRENT ITERATION FOR THE MASTER LOOP
+        RUNS ALL PROCESSES AND ENDS ONCE ALL OF THEM ARE
+        COMPLETED
+    */
+    while (tempProcessPtr != NULL)
     {
-      sim_time = accessTimer(LAP_TIMER, timeString);
-      if (PCB_ptr->time_start <= sim_time)
-      {
-        PCB_ptr->state = READY_STATE;
-        sprintf(reportString,
-                "OS: Process %d set to READY state from NEW state",
-                PCB_ptr->pid);
-        LOGdump(ADD_LOG, config_dataptr, reportString);
-      }
+
+        //set process to ready state
+        tempProcessPtr->CurrentProcess->state = READY_STATE;
+        
+        //// GET TIME
+        accessTimer(LAP_TIMER, timerString);
+
+        //// Process string prep start
+
+        sprintf(buffer, "%s, OS: Process %d set to READY state from NEW state\n",
+                timerString, tempProcessPtr->CurrentProcess->PID);
+
+        tempStrPtr = printOrAddtoList(tempStrPtr, buffer, configData);
+
+        //// Process string prep end
+
+        tempProcessPtr = tempProcessPtr->nextProcess;
     }
-  }
-}
 
-void PCBdisplay(PCBdata *head_ptr)
-{
-  PCBdata *wkg_ptr;
-
-  if (head_ptr)
-  {
-    while (wkg_ptr)
+    if (configData->memDisplay && 
+       (configData->logToCode == LOGTO_BOTH_CODE || configData->logToCode == LOGTO_MONITOR_CODE))
     {
-      printf("PCB pid: %d, state: %d, time remaining: %d,\n", wkg_ptr->pid,
-             wkg_ptr->state, wkg_ptr->time_left);
-
-      printf("\tcurrent command: %s, ", wkg_ptr->OClist->command);
-
-      printf("\tcurrent op code: %s, \n", wkg_ptr->OClist->strArg1);
-
-      printf("\tfirst int arg: %d, second int arg: %d\n\n",
-             wkg_ptr->OClist->intArg2, wkg_ptr->OClist->intArg3);
-
-      wkg_ptr = wkg_ptr->next_ptr;
+        printf("--------------------------------------------------\n");
+        printf("After memory initialization\n");
+        printf("0 [ Open, P#: x, 0-0 ] %d\n", configData->memAvailable - 1);
+        printf("--------------------------------------------------\n");
     }
-  }
-  else
-  {
-    printf("\n[-] INVALID PCB LIST\n");
-  }
-}
 
-void PROCthread(ConfigDataType *CNF_ptr, OpCodeType *OPC_ptr, PCBdata *PCB_ptr)
-{
-  char reportString[MAX_STR_LEN];
-  PCBdata *PCB_wkg_ptr;
-  int oneCycle, cyclesToRun, quantumCount;
-  bool isPreemptive, cont;
-  bool interrupt = false;
+    //orders processes for the scheduling algorithm
+    Processes = orderProcesses(Processes, configData);
 
-  oneCycle = CNF_ptr->procCycleRate;
-  quantumCount = CNF_ptr->quantumCycles;
-  cyclesToRun = OPC_ptr->intArg2;
-  cont = true;
-  isPreemptive = (OPC_ptr->intArg3 == PREEMPTIVE_CODE);
-  PCB_wkg_ptr = PCBnode_pid(PCB_ptr, OPC_ptr->pid);
-
-  while (cont)
-  {
-    runTimer(oneCycle);
-    PCB_wkg_ptr->time_left -= oneCycle;
-    --cyclesToRun;
-    --quantumCount;
-    interrupt = interruptMNGR(INTERRUPT_CHECK, OPC_ptr, PCB_ptr, CNF_ptr);
-    if ((!cyclesToRun || isPreemptive) && (!quantumCount || interrupt))
+    //Run master loop
+    //Runs process in the order they appear in the process list
+    while (Processes != NULL)
     {
-      cont = false;
+        ///////// display initial OS actions prior to process start
+
+        accessTimer(LAP_TIMER, timerString);
+        sprintf(buffer, "%s, OS: Process %d selected with %d ms remaining\n",
+                timerString, Processes->CurrentProcess->PID,
+                (Processes->CurrentProcess->burstTimeIO +
+                 Processes->CurrentProcess->burstTimeCPU));
+
+        tempStrPtr = printOrAddtoList(tempStrPtr, buffer, configData);
+
+        /////Tell user that process is set to running and start Process
+
+        Processes->CurrentProcess->state = RUNNING_STATE;
+
+        sprintf(buffer, "%s, OS: Process %d set from READY to RUNNING\n",
+                timerString, Processes->CurrentProcess->PID);
+
+        tempStrPtr = printOrAddtoList(tempStrPtr, buffer, configData);
+
+        ////////run a process
+
+        tempStrPtr = runProcess(Processes->CurrentProcess, configData, tempStrPtr, mainMemory);
+
+        /*
+            free process
+        */
+        freeProcessMemory(mainMemory);
+
+        ////////End process output
+
+        //set process to exit state
+        Processes->CurrentProcess->state = EXIT_STATE;
+
+        ////////Start Print OS end Process 
+
+        //inform process ended
+
+        accessTimer(LAP_TIMER, timerString);
+        sprintf(buffer, "%s, OS: Process %d ended\n",
+                timerString, Processes->CurrentProcess->PID);
+
+        tempStrPtr = printOrAddtoList(tempStrPtr, buffer, configData);
+
+        if (configData->memDisplay && 
+           (configData->logToCode == LOGTO_BOTH_CODE || configData->logToCode == LOGTO_MONITOR_CODE))
+        {
+            printf("--------------------------------------------------\n");
+            printf("After clear process %d success\n", Processes->CurrentProcess->PID);
+            printf("0 [ Open, P#: x, 0-0 ] %d\n", configData->memAvailable - 1);
+            printf("--------------------------------------------------\n");
+        }
+
+        //inform process set to exit
+
+        accessTimer(LAP_TIMER, timerString);
+        sprintf(buffer, "%s, OS: Process %d set to EXIT\n",
+                timerString, Processes->CurrentProcess->PID);
+
+        tempStrPtr = printOrAddtoList(tempStrPtr, buffer, configData);
+
+        ////////End Print OS end Process 
+
+        //move to next process
+        Processes = Processes->nextProcess;
     }
-  }
 
-  if (cyclesToRun > ZERO && isPreemptive && !interrupt)
-  {
-    PCB_wkg_ptr->quant_time = true;
-    sprintf(reportString,
-            "OS: Process %d quantum time out, cpu process operation end",
-            OPC_ptr->pid);
-    LOGdump(ADD_LOG, CNF_ptr, reportString);
-  }
-  else
-  {
-    sprintf(reportString, "Process: %d, %s %s operation end", OPC_ptr->pid,
-            OPC_ptr->command, OPC_ptr->strArg1);
-    LOGdump(ADD_LOG, CNF_ptr, reportString);
-  }
-
-  OPC_ptr->intArg2 = cyclesToRun;
-}
-
-void IOthread(ConfigDataType *config_dataptr, OpCodeType *OPC_ptr, PCBdata *PCB_ptr)
-{
-  char reportString[MAX_STR_LEN];
-  PCBdata *local_ptr;
-
-  if (OPC_ptr->intArg3 == NON_PREEMPTIVE_CODE)
-  {
-    runTimer(OPC_ptr->intArg2);
-    sprintf(reportString, "Process: %d, %s %sput operation end", OPC_ptr->pid,
-            OPC_ptr->strArg1, OPC_ptr->inOutArg);
-    LOGdump(ADD_LOG, config_dataptr, reportString);
-  }
-  else
-  {
-    sprintf(reportString, "OS: Process %d blocked for %sput operation",
-            OPC_ptr->pid, OPC_ptr->inOutArg);
-    LOGdump(ADD_LOG, config_dataptr, reportString);
-
-    local_ptr = PCBnode_pid(PCB_ptr, OPC_ptr->pid);
-    local_ptr->state = BLOCKED_STATE;
-
-    sprintf(reportString, "OS: Process %d set from RUNNING to BLOCKED",
-            OPC_ptr->pid);
-    LOGdump(ADD_LOG, config_dataptr, reportString);
-    interruptMNGR(SET_IO_START, OPC_ptr, PCB_ptr, config_dataptr);
-  }
-}
-
-void *IOthread_wrapper(void *arg)
-{
-  // refer to IOargs in simulator.h for definitions on thread args
-  void **args = (void **)arg;
-  ConfigDataType *config_dataptr = (ConfigDataType *)args[IO_ARG_ONE];
-  OpCodeType *OPC_ptr = (OpCodeType *)args[IO_ARG_TWO];
-  PCBdata *PCB_ptr = (PCBdata *)args[IO_ARG_THREE];
-
-  IOthread(config_dataptr, OPC_ptr, PCB_ptr);
-
-  pthread_exit(NULL);
-}
-
-void OPCcopy(OpCodeType *destination, OpCodeType *source)
-{
-  destination->pid = source->pid;
-  copyString(destination->command, source->command);
-  copyString(destination->inOutArg, source->inOutArg);
-  copyString(destination->strArg1, source->strArg1);
-  destination->intArg2 = source->intArg2;
-  destination->intArg3 = source->intArg3;
-  destination->opEndTime = source->opEndTime;
-  destination->next_ptr = source->next_ptr;
-  return;
-}
-
-OpCodeType *addInterrupt(OpCodeType *local_ptr, OpCodeType *new_ptr)
-{
-  OpCodeType *addedNode;
-
-  if (local_ptr)
-  {
-    local_ptr->next_ptr = addInterrupt(local_ptr->next_ptr, new_ptr);
-    return local_ptr;
-  }
-  else
-  {
-    addedNode = (OpCodeType *)malloc(sizeof(OpCodeType));
-    OPCcopy(addedNode, new_ptr);
-    addedNode->next_ptr = NULL;
-    return addedNode;
-  }
-}
-
-OpCodeType *removeOpCodeNode(OpCodeType *headPtr, OpCodeType *removedPtr)
-{
-  OpCodeType *wkgPtr;
-
-  wkgPtr = headPtr;
-  if (removedPtr == headPtr)
-  {
-    headPtr = headPtr->next_ptr;
-  }
-  else
-  {
-    for (; wkgPtr->next_ptr != removedPtr; wkgPtr = wkgPtr->next_ptr)
+    //display end of memory configuration
+    if (configData->memDisplay && 
+       (configData->logToCode == LOGTO_BOTH_CODE || configData->logToCode == LOGTO_MONITOR_CODE))
     {
+        printf("--------------------------------------------------\n");
+        printf("After clear all process success\n");
+        printf("No memory configured\n");
+        printf("--------------------------------------------------\n");
     }
-    wkgPtr->next_ptr = wkgPtr->next_ptr->next_ptr;
-    free(removedPtr);
-  }
-  return headPtr;
+
+    //end timer
+    accessTimer(STOP_TIMER, timerString);
+
+    //Inform OS ended simulation
+    sprintf(buffer, "%s, OS: Simulator End\n", timerString);
+    
+    tempStrPtr = addNewStringNode(tempStrPtr, buffer);
+
+    //if print to file only, print out upload was finished
+    if (configData->logToCode == LOGTO_FILE_CODE)
+    {
+        sprintf(buffer, "Finished, outputted to: %.*s\n", STD_STR_LEN, configData->logToFileName);
+        //pthread only cancelled if logging to file only, dont take out of if block
+        pthread_cancel(loadtid);
+    }
+    printf("%s", buffer);
+    
+    //create log file and print ot log file if config file specifies to do so
+    if (configData->logToCode == LOGTO_BOTH_CODE || configData->logToCode == LOGTO_FILE_CODE)
+    {
+        printToFile(strings, configData);
+    }
+
+    //free processes and strings memory
+    freeProcesses(clearProcessPtr);
+    freeStrings(clearStrPtr);
 }
 
-bool interruptMNGR(Interrupts CTRL_ptr, OpCodeType *OPC_ptr, PCBdata *PCB_ptr, ConfigDataType *config_dataptr)
+/*
+    Create a new process control block which points to a OpCodeType as where the process starts
+    along with unique PID and any other data needed for an initial process, such as finding total
+    burst time, allocates memory for all needed
+    returns new PCB
+*/
+ProcessesList* findAndCreateProcesses(ProcessesList* processes, OpCodeType *metaDataPtr, ConfigDataType *configData)
 {
-  char reportString[MAX_STR_LEN];
-  double currentTime = 0.0;
-  PCBdata *local_ptr = NULL;
-  bool returnVal = false;
-  OpCodeType *delOPC = NULL;
-  OpCodeType *wkgOPC_ptr = NULL;
+    //create temporary pointer for process addition
+    ProcessesList* tempListPtr = NULL;
+    ProcessesList* firstProcessPtr = NULL;
+    OpCodeType* metaDataNode = metaDataPtr;
 
-  delOPC = NULL;
-  returnVal = false;
-
-  if (CTRL_ptr)
-  {
-    switch (CTRL_ptr)
+    //go through all metadata
+    while (metaDataNode != NULL)
     {
-    case INIT_MNGR:
-      wkgOPC_ptr = NULL;
-      returnVal = true;
-
-    case INTERRUPT_CHECK:
-      wkgOPC_ptr = OPC_ptr;
-      while (wkgOPC_ptr)
-      {
-        local_ptr = PCBnode_pid(PCB_ptr, wkgOPC_ptr->pid);
-        currentTime = accessTimer(LAP_TIMER, reportString);
-        if (currentTime > wkgOPC_ptr->opEndTime)
+        //if metadata is process start, create new process
+        if (compareStrings(metaDataNode->command,"app") == STR_EQ && 
+            compareStrings(metaDataNode->strArg1,"start") == STR_EQ)
         {
-          if (local_ptr->state != EXIT_STATE)
-          {
-            returnVal = true;
-          }
-          delOPC = wkgOPC_ptr;
-        }
-        if (delOPC)
-        {
-          wkgOPC_ptr = removeOpCodeNode(wkgOPC_ptr, delOPC);
-          delOPC = NULL;
-        }
-        else
-        {
-          wkgOPC_ptr = wkgOPC_ptr->next_ptr;
-        }
-      }
-      break;
+            if (processes == NULL)
+            {
+                processes = (ProcessesList*)malloc(sizeof(ProcessesList));
+                processes->CurrentProcess = NULL;
+                processes->nextProcess = NULL;
+                processes->prevProcess = tempListPtr;
+                tempListPtr = processes;
+                if (processes->prevProcess != NULL)
+                {
+                    processes->prevProcess->nextProcess = processes;
+                }
+                if (firstProcessPtr == NULL)
+                {
+                    firstProcessPtr = processes;
+                }
+                //create new process once it is found and assign to list block
+                processes->CurrentProcess = createProcess(processes->CurrentProcess, metaDataNode, configData);
 
-    case SET_IO_START:
-      currentTime = accessTimer(LAP_TIMER, reportString);
-      OPC_ptr->opEndTime = OPC_ptr->intArg2 / 1000.0 + currentTime;
-      wkgOPC_ptr = addInterrupt(wkgOPC_ptr, OPC_ptr);
-      break;
+                processes = processes->nextProcess;
+            }
 
-    case RESOLVE_INTERRUPTS:
-      wkgOPC_ptr = OPC_ptr;
-
-      while (wkgOPC_ptr)
-      {
-        local_ptr = PCBnode_pid(PCB_ptr, wkgOPC_ptr->pid);
-        currentTime = accessTimer(LAP_TIMER, reportString);
-
-        if (currentTime > wkgOPC_ptr->opEndTime)
-        {
-          if (local_ptr->state != EXIT_STATE)
-          {
-            sprintf(reportString,
-                    "OS: Interrupted by process %d, %s %sput operation",
-                    wkgOPC_ptr->pid, wkgOPC_ptr->strArg1, wkgOPC_ptr->inOutArg);
-            LOGdump(ADD_LOG, config_dataptr, reportString);
-            local_ptr->state = READY_STATE;
-            sprintf(reportString, "OS: Process %d set from BLOCKED to READY",
-                    wkgOPC_ptr->pid);
-            LOGdump(ADD_LOG, config_dataptr, reportString);
-          }
-          delOPC = wkgOPC_ptr;
         }
-
-        if (delOPC)
-        {
-          wkgOPC_ptr = removeOpCodeNode(wkgOPC_ptr, delOPC);
-          delOPC = NULL;
-        }
-
-        else
-        {
-          wkgOPC_ptr = wkgOPC_ptr->next_ptr;
-        }
-      }
-      returnVal = true;
-      break;
+        //assign current metadata pointer to nextNode
+        metaDataNode = metaDataNode->nextNode;
     }
-  }
 
-  else
-  {
-    wkgOPC_ptr = NULL;
+    //return first Process pointer
+    return firstProcessPtr;
+}
+
+/*
+    This function gets the list of processes and depending on the scheduling selected for processes,
+    orders the process to conform and run as intended
+*/
+ProcessesList* orderProcesses(ProcessesList* processes, ConfigDataType *configData)
+{
+    //initialize needed pointers
+    ProcessesList* firstProcessPtr = processes;
+    ProcessesList* tempProcessPtr = processes;
+    ProcessControlBlock* tempPCBPtr = NULL;
+
+    //finds the process code
+    if (configData->cpuSchedCode == CPU_SCHED_SJF_N_CODE)
+    {
+        //implements selection sort for setting SJF sched
+        while (processes != NULL)
+        {
+            //set initial minimum process   
+            ProcessesList* min = processes;
+            //loops through all unsorted processes
+            while(tempProcessPtr != NULL)
+            {
+                //if process found is shorter then min, it is set to new min
+                if (tempProcessPtr->CurrentProcess->burstTimeCPU + 
+                    tempProcessPtr->CurrentProcess->burstTimeIO < 
+                    min->CurrentProcess->burstTimeCPU + 
+                    min->CurrentProcess->burstTimeIO)
+                {
+                    min = tempProcessPtr;
+                }
+
+                //moves to next process
+                tempProcessPtr = tempProcessPtr->nextProcess;
+            }
+
+            //swaps processes
+            tempProcessPtr = min;
+            tempPCBPtr = min->CurrentProcess;
+            min->CurrentProcess = processes->CurrentProcess;
+            processes->CurrentProcess = tempPCBPtr;
+
+            //move to next process and set tempProcessPointer
+            processes = processes->nextProcess;
+            tempProcessPtr = processes;
+        }
+    }
+    else if (configData->cpuSchedCode == CPU_SCHED_SRTF_P_CODE)
+    {
+        /* stub if block for future shceduling */
+    }
+    else if (configData->cpuSchedCode == CPU_SCHED_FCFS_P_CODE)
+    {
+        /* stub if block for future shceduling */
+    }
+    else if (configData->cpuSchedCode == CPU_SCHED_RR_P_CODE)
+    {
+        /* stub if block for future shceduling */
+    }
+    
+    return firstProcessPtr;
+}
+
+
+/*
+    Goes through all metaData and finds each unique process, adding it to a process list
+*/
+ProcessControlBlock* createProcess(ProcessControlBlock* process, OpCodeType *metaData, ConfigDataType *configData)
+{
+    //set pointer for function use
+    OpCodeType* processDataPtr = metaData;
+
+    //initialize static int to keep track of PIDs
+    static int PID_Number = 0;
+    if (process == NULL)
+    {
+        process = (ProcessControlBlock*)malloc(sizeof(ProcessControlBlock));
+    }
+    
+    //set process PID
+    process->PID = PID_Number;
+
+    //add PID to metadata start node
+    metaData->pid = PID_Number++;
+
+    //set process to new
+    process->state = NEW_STATE;
+    
+    //set start program node to passed in node
+    process->programStartNode = processDataPtr;
+
+    //set initial burstTime until total time is found
+    process->burstTimeCPU = 0;
+    process->burstTimeIO = 0;
+
+    //initialize data/text/memory
+    process->data = NULL;
+    process->text = NULL;
+
+
+    //loop through process until CPU/IO burst time is found
+    while (processDataPtr != NULL && (compareStrings(processDataPtr->command,"app") != STR_EQ || 
+            compareStrings(processDataPtr->strArg1,"end") != STR_EQ))
+    {
+        if (compareStrings(processDataPtr->command, "dev") == STR_EQ)
+        {
+            process->burstTimeIO += processDataPtr->intArg2 * configData->ioCycleRate; 
+        }
+        else if (compareStrings(processDataPtr->command, "cpu") == STR_EQ)
+        {
+            process->burstTimeCPU += processDataPtr->intArg2 * configData->procCycleRate; 
+        }
+
+        processDataPtr = processDataPtr->nextNode;
+    }
+
+    //return current process PID
+    return process;
+}
+
+/*
+    Runs a given process, running as long as dictated by the config file, along with
+    outputting any info to log gile or monitor. Uses POSIX threads for IO
+*/
+stringList* runProcess(ProcessControlBlock* process, ConfigDataType* config, 
+                       stringList* strings, memoryAllocationBlock* memory)
+{
+    //declare/initialize variables
+    char timerString[MIN_STR_LEN];
+    char buffer[MAX_OUTPUT_STRING_LENGTH];
+    int waitSeconds = 0;
+    void* param;
+    
+    //get start of program 
+    OpCodeType* programPtr = process->programStartNode;
+
+    //create thread variables for future use
+    pthread_t IOtid;  /* the thread identifier */
+    pthread_attr_t attr; /* set of thread attributes */
+    pthread_attr_init(&attr); /* Set thread */
+
+    //loop through metaData until either end of process or empty ptr
+    while (programPtr != NULL && (compareStrings(programPtr->command, "app") != STR_EQ
+    || compareStrings(programPtr->strArg1, "end") != STR_EQ))
+    {
+        //check if this is a command that is to be outputted
+        if (compareStrings(programPtr->inOutArg, "in") == STR_EQ
+        || compareStrings(programPtr->inOutArg, "out") == STR_EQ)
+        {
+            ////START OPERATION
+            //prints out a operations has started
+            accessTimer(LAP_TIMER, timerString);
+            sprintf(buffer, "%s, Process: %d, %s %s %sput Operation start\n",
+                timerString, process->PID, programPtr->command, programPtr->strArg1,
+                programPtr->inOutArg);
+                
+            strings = printOrAddtoList(strings, buffer, config);
+
+            /*
+                Test which operation category is being executed 
+                dev: IO
+                cpu: cpu
+                and run timerthread for IO operations
+            */
+            if (compareStrings(programPtr->command, "cpu") == STR_EQ)
+            {
+                waitSeconds = programPtr->intArg2 * config->ioCycleRate;
+                param = &waitSeconds;
+                runTimer(param);
+            }
+            else if (compareStrings(programPtr->command, "dev") == STR_EQ)
+            {
+                waitSeconds = programPtr->intArg2 * config->ioCycleRate;
+                param = &waitSeconds;
+                pthread_create(&IOtid, &attr, runTimer, param);
+                pthread_join(IOtid, NULL);
+            }
+
+            ////print out operation end
+            accessTimer(LAP_TIMER, timerString);
+            sprintf(buffer, "%s, Process: %d, %s %s %sput Operation end\n",
+                timerString, process->PID, programPtr->command, programPtr->strArg1,
+                programPtr->inOutArg);
+
+            strings = printOrAddtoList(strings, buffer, config);
+            ////END OPERATION
+        }
+
+        /*
+            BLOCK FOR mem COMMAND
+        */
+        else if (compareStrings(programPtr->command, "mem") == STR_EQ)
+        {
+            /*
+                if block for mem allocate command
+            */
+            //memblock pointer for output
+            memoryAllocationBlock* outputMem = NULL;
+
+            if (compareStrings(programPtr->strArg1, "allocate") == STR_EQ)
+            {
+                //print code
+                accessTimer(LAP_TIMER, timerString);
+                sprintf(buffer, "%s, Process: %d, %s allocate request (%d, %d)\n",
+                timerString, process->PID, programPtr->command, programPtr->intArg2,
+                programPtr->intArg3);
+
+                strings = printOrAddtoList(strings, buffer, config);
+
+                //end of print code
+
+                //create a memory block and allocate memory to it
+                memoryAllocationBlock* newMemory = createMemoryBlock(programPtr->intArg2, programPtr->intArg3);
+
+                //check if the selected memory for the newMemory is available, if yes add it
+                //if not free the newMemory and end the process
+                if (checkIfMemoryAvailable(memory, newMemory, config, &outputMem))
+                {
+                    //add the new memory to the memory linked list
+                    memory = addMemoryBlock(memory, newMemory);
+                    freeProcessMemory(newMemory);
+
+                    if (config->memDisplay && 
+                       (config->logToCode == LOGTO_BOTH_CODE || config->logToCode == LOGTO_MONITOR_CODE))
+                    {
+                        printf("--------------------------------------------------\n");                    
+                        printf("After allocate success\n");
+                        printf("0 [ Used, P#: %d, %d-%d ] %d\n", process->PID,
+                        newMemory->memoryBaseAddress, newMemory->memoryBaseAddress + programPtr->intArg3 - 1,
+                        newMemory->memoryAllocated - 1);
+                        printf("%d [ Open, P#: x, 0-0 ] %d\n", newMemory->memoryAllocated, config->memAvailable - 1);
+                        printf("--------------------------------------------------\n");
+                    }
+
+                    //print code
+                    accessTimer(LAP_TIMER, timerString);
+                    sprintf(buffer, "%s, Process: %d, successful mem allocate request\n",
+                    timerString, process->PID);
+
+                    strings = printOrAddtoList(strings, buffer, config);
+                }
+                //if memory overlaps with already allocated memory, or out of range
+                else
+                {
+                    if (config->memDisplay && 
+                       (config->logToCode == LOGTO_BOTH_CODE || 
+                       config->logToCode == LOGTO_MONITOR_CODE))
+                    {
+                        printf("--------------------------------------------------\n");
+                        printf("After allocate overlap failure\n");
+                        printf("0 [ Used, P#: %d, %d-%d ] %d\n", process->PID, outputMem->memoryBaseAddress, 
+                        outputMem->memoryBaseAddress + outputMem->memoryAllocated - 1, outputMem->memoryAllocated - 1);
+                        printf("0 [ Open, P#: x, 0-0 ] %d\n", config->memAvailable - 1);
+                        printf("--------------------------------------------------\n");
+                    }
+                    
+                    //free the new memory
+                    freeProcessMemory(newMemory);
+                    newMemory = NULL;
+
+                    //print code
+                    accessTimer(LAP_TIMER, timerString);
+                    sprintf(buffer, "%s, Process: %d, failed mem allocate request\n",
+                    timerString, process->PID);
+
+                    strings = printOrAddtoList(strings, buffer, config);
+
+                    //print code
+                    accessTimer(LAP_TIMER, timerString);
+                    sprintf(buffer, "%s, OS: Segmentation fault, Process %d ended\n",
+                    timerString, process->PID);
+
+                    strings = printOrAddtoList(strings, buffer, config);
+
+                    return strings;
+                }
+
+            }
+            /*
+                if block for mem access command
+            */
+            else if (compareStrings(programPtr->strArg1, "access") == STR_EQ)
+            {
+                //print code
+                accessTimer(LAP_TIMER, timerString);
+                sprintf(buffer, "%s, Process: %d, %s access request (%d, %d)\n",
+                timerString, process->PID, programPtr->command, programPtr->intArg2,
+                programPtr->intArg3);
+
+                strings = printOrAddtoList(strings, buffer, config);
+
+                //end of print code
+
+                //check if the memory being accesses is allocated and able to be accesses
+                if (checkIfMemoryExists(memory, programPtr->intArg2, programPtr->intArg3, &outputMem))
+                {
+
+                    //print out memory operation results
+                    if (config->memDisplay && 
+                       (config->logToCode == LOGTO_BOTH_CODE || 
+                        config->logToCode == LOGTO_MONITOR_CODE))
+                    {
+                        printf("--------------------------------------------------\n");                    
+                        printf("After access success\n");
+                        printf("0 [ Used, P#: %d, %d-%d ] %d\n", process->PID,
+                        outputMem->memoryBaseAddress, outputMem->memoryBaseAddress + outputMem->memoryAllocated - 1,
+                        outputMem->memoryAllocated - 1);
+                        printf("%d [ Open, P#: x, 0-0 ] %d\n", outputMem->memoryAllocated, config->memAvailable - 1);
+                        printf("--------------------------------------------------\n");
+                    }
+
+                    //print code
+                    accessTimer(LAP_TIMER, timerString);
+                    sprintf(buffer, "%s, Process: %d, successful mem access request\n",
+                    timerString, process->PID);
+
+                    strings = printOrAddtoList(strings, buffer, config);
+                }
+                //if memory access is out of range or invalid
+                else
+                {
+                    if (config->memDisplay && 
+                       (config->logToCode == LOGTO_BOTH_CODE || 
+                        config->logToCode == LOGTO_MONITOR_CODE))
+                    {
+                        printf("--------------------------------------------------\n");
+                        printf("After access failure\n");
+                        printf("0 [ Used, P#: %d, %d-%d ] %d\n", process->PID,
+                        programPtr->intArg2, programPtr->intArg2 + programPtr->intArg3 - 1,
+                        programPtr->intArg3 - 1);
+                        printf("%d [ Open, P#: x, 0-0 ] %d\n", programPtr->intArg3, config->memAvailable - 1);
+                        printf("--------------------------------------------------\n");
+                    }
+
+                    //print code
+                    accessTimer(LAP_TIMER, timerString);
+                    sprintf(buffer, "%s, Process: %d, failed mem access request\n",
+                    timerString, process->PID);
+
+                    strings = printOrAddtoList(strings, buffer, config);
+
+                    //print code
+                    accessTimer(LAP_TIMER, timerString);
+                    sprintf(buffer, "%s, OS: Segmentation fault, Process %d ended\n",
+                    timerString, process->PID);
+
+                    strings = printOrAddtoList(strings, buffer, config);
+
+                    return strings;
+                }
+            }
+        }
+        
+        //move to next operation
+        programPtr = programPtr->nextNode;
+    }
+
+    return strings;
+}
+
+/*
+    creates a memory block for a process and return a pointer to the block
+*/
+memoryAllocationBlock* createMemoryBlock(int memoryBase, int memoryOffset)
+{
+    //allocate memory
+    memoryAllocationBlock* memory = (memoryAllocationBlock*)malloc(sizeof(memoryAllocationBlock));
+
+    memory->memoryBaseAddress = memoryBase;
+    memory->memoryAllocated = memoryOffset;
+
+    memory->nextMemory = NULL;
+    memory->prevMemory = NULL;
+
+    return memory;
+}
+
+/*
+    check if memory is available in a process
+*/
+bool checkIfMemoryAvailable(memoryAllocationBlock *memory, memoryAllocationBlock* testMemory, ConfigDataType* config, memoryAllocationBlock** outMem)
+{
+    memoryAllocationBlock* tempPtr = memory;
+
+    int testMemEndAddress;
+    int tempMemEndAddress;
+
+    while (tempPtr != NULL)
+    {
+        testMemEndAddress = testMemory->memoryBaseAddress + testMemory->memoryAllocated;
+        tempMemEndAddress = tempPtr->memoryBaseAddress + tempPtr->memoryAllocated;
+
+        if (//Tests if new memory start is in already allocated memory
+            (testMemory->memoryBaseAddress > tempPtr->memoryBaseAddress &&
+            testMemory->memoryBaseAddress < tempMemEndAddress) ||
+            //Tests if new memory end is in already allocated memory
+            (testMemEndAddress > tempPtr->memoryBaseAddress &&
+            testMemEndAddress < tempMemEndAddress) ||
+            //check if memory allocation is within config permitted bounds
+            (testMemEndAddress > config->memAvailable))
+        {
+            *outMem = tempPtr; 
+            return false;
+        }
+
+        tempPtr = tempPtr->nextMemory;
+    }
+
     return true;
-  }
-
-  return returnVal;
 }
 
-MEMnode *MEMnode_add(int physStart, int physEnd, int memState, int procNum, int logStart, int logStop)
+/*
+    Check if a memory block has been reserved and is accessible by the membase and offset
+*/
+bool checkIfMemoryExists(memoryAllocationBlock* memory, int memBase, int memOffset, memoryAllocationBlock** outMem)
 {
-  MEMnode *result = (MEMnode *)malloc(sizeof(MEMnode));
-  result->physicalStart = physStart;
-  result->physicalStop = physEnd;
-  result->memBlockState = memState;
-  result->processNumber = procNum;
-  result->logicalStart = logStart;
-  result->logicalStop = logStop;
-  result->next_ptr = NULL;
-  return result;
-}
+    memoryAllocationBlock* tempMemPtr = memory;
 
-void MEMnode_recycle(MEMnode *tempNode, int memState, int procNum, int phyStart, int phyStop, int logStart, int logStop)
-{
-  tempNode->memBlockState = memState;
-  tempNode->processNumber = procNum;
-  tempNode->physicalStart = phyStart;
-  tempNode->physicalStop = phyStop;
-  tempNode->logicalStart = logStart;
-  tempNode->logicalStop = logStop;
-}
-
-void MEMrepair(MEMnode *MEM_ptr)
-{
-  MEMnode *removePtr;
-
-  while (MEM_ptr)
-  {
-    if (MEM_ptr->memBlockState == READY_STATE && MEM_ptr->next_ptr &&
-        MEM_ptr->next_ptr->memBlockState == READY_STATE)
+    while (tempMemPtr != NULL)
     {
-      MEMnode_recycle(MEM_ptr, READY_STATE, NULL_PID, MEM_ptr->physicalStart,
-                      MEM_ptr->next_ptr->physicalStop, ZERO, ZERO);
-      removePtr = MEM_ptr->next_ptr;
-      MEM_ptr->next_ptr = removePtr->next_ptr;
-      free(removePtr);
+        //check if access is within bounds of a memory block
+        if (tempMemPtr->memoryBaseAddress <= memBase && 
+        tempMemPtr->memoryBaseAddress + tempMemPtr->memoryAllocated
+        >= memBase + memOffset)
+        {
+            *outMem = tempMemPtr;
+            return true;
+        }
+
+        tempMemPtr = tempMemPtr->nextMemory;
     }
-    else
-    {
-      MEM_ptr = MEM_ptr->next_ptr;
-    }
-  }
-}
-
-void MEMdisplay(MEMnode *MEM_ptr, char *output_str, bool output_flag)
-{
-  char output_string[MAX_STR_LEN];
-  MEMnode *wkgMemPtr;
-
-  if (output_flag != false)
-  {
-    puts("\n--------------------------------------------------");
-    puts(output_str);
-    wkgMemPtr = MEM_ptr;
-    if (MEM_ptr == NULL)
-    {
-      puts("No memory configured");
-    }
-    for (; wkgMemPtr != NULL; wkgMemPtr = wkgMemPtr->next_ptr)
-    {
-      if (wkgMemPtr->memBlockState == MEM_OPEN)
-      {
-        copyString(output_string, "Open");
-      }
-      else
-      {
-        copyString(output_string, "Used");
-      }
-      if (wkgMemPtr->processNumber == NULL_PID)
-      {
-        printf("%d [ %s, P#: x, ", wkgMemPtr->physicalStart, output_string);
-      }
-      else
-      {
-        printf("%d [ %s, P#: %d, ", wkgMemPtr->physicalStart, output_string,
-               wkgMemPtr->processNumber);
-      }
-      printf("%d-%d ] %d\n", wkgMemPtr->logicalStart, wkgMemPtr->logicalStop,
-             wkgMemPtr->physicalStop);
-    }
-    puts("--------------------------------------------------");
-  }
-}
-
-bool MMU(ConfigDataType *config_dataptr, OpCodeType *OPC_ptr)
-{
-  char displayStr[MAX_STR_LEN];
-  MEMnode *tempNodePtr;
-  static MEMnode *head_ptr = NULL;
-  int highMemLoc;
-  int lowMemLoc;
-  int processId;
-  int logicalHigh;
-  int requestedMemory;
-  bool displayFlag = config_dataptr->memDisplay;
-  int highestMemLoc = config_dataptr->memAvailable - ONE;
-  int lowestMemLoc = ZERO;
-  MEMnode *wkgMemPtr;
-  MEMnode *trlgPtr;
-  int logicalOffset;
-  int logicalLow;
-
-  if (head_ptr == NULL)
-  {
-    head_ptr = MEMnode_add(lowestMemLoc, highestMemLoc, MEM_OPEN, NULL_PID,
-                           MEM_INIT, MEM_INIT);
-    copyString(displayStr, "After memory initialization");
-    MEMdisplay(head_ptr, displayStr, displayFlag);
-    return true;
-  }
-
-  if (compareString(OPC_ptr->strArg1, "clearAll") &&
-      compareString(OPC_ptr->strArg1, "clearOne"))
-  {
-    logicalLow = OPC_ptr->intArg2;
-    logicalOffset = OPC_ptr->intArg3;
-  }
-  else
-  {
-    logicalLow = ONE;
-    logicalOffset = ONE;
-  }
-  requestedMemory = logicalOffset;
-  logicalHigh = logicalOffset + logicalLow - ONE;
-  processId = OPC_ptr->pid;
-
-  if ((!compareString(OPC_ptr->strArg1, "allocate") ||
-       !compareString(OPC_ptr->strArg1, "access")) &&
-      (logicalLow < ZERO || logicalOffset <= ZERO ||
-       config_dataptr->memAvailable <= logicalLow ||
-       config_dataptr->memAvailable <= logicalHigh))
-  {
-    copyString(displayStr, "After limits out of range");
-    MEMdisplay(head_ptr, displayStr, displayFlag);
     return false;
-  }
-  if (compareString(OPC_ptr->strArg1, "allocate"))
-  {
-    if (!compareString(OPC_ptr->strArg1, "access"))
-    {
-      for (wkgMemPtr = head_ptr; wkgMemPtr != NULL;
-           wkgMemPtr = wkgMemPtr->next_ptr)
-      {
-        if (wkgMemPtr->processNumber == processId &&
-            wkgMemPtr->logicalStart <= logicalLow &&
-            wkgMemPtr->logicalStop >= logicalLow &&
-            wkgMemPtr->logicalStart <= logicalHigh &&
-            wkgMemPtr->logicalStop >= logicalHigh)
-        {
-          copyString(displayStr, "After access success");
-          MEMdisplay(head_ptr, displayStr, displayFlag);
-          return true;
-        }
-      }
-      copyString(displayStr, "After access failure");
-      MEMdisplay(head_ptr, displayStr, displayFlag);
-      return false;
-    }
-
-    if (compareString(OPC_ptr->strArg1, "clearOne"))
-    {
-      wkgMemPtr = head_ptr;
-      while (wkgMemPtr)
-      {
-        tempNodePtr = wkgMemPtr;
-        wkgMemPtr = wkgMemPtr->next_ptr;
-        free(tempNodePtr);
-      }
-      head_ptr = NULL;
-      copyString(displayStr, "After clear all process success");
-      MEMdisplay(head_ptr, displayStr, displayFlag);
-      return true;
-    }
-
-    else
-    {
-      for (wkgMemPtr = head_ptr; wkgMemPtr != NULL;
-           wkgMemPtr = wkgMemPtr->next_ptr)
-      {
-        if (wkgMemPtr->processNumber == processId)
-          MEMnode_recycle(wkgMemPtr, MEM_OPEN, NULL_PID,
-                          wkgMemPtr->physicalStart, wkgMemPtr->physicalStop,
-                          ZERO, ZERO);
-      }
-      MEMrepair(head_ptr);
-      sprintf(displayStr, "After clear process %d success", processId);
-      MEMdisplay(head_ptr, displayStr, displayFlag);
-      return true;
-    }
-  }
-
-  else
-  {
-    for (wkgMemPtr = head_ptr; wkgMemPtr != NULL;
-         wkgMemPtr = wkgMemPtr->next_ptr)
-    {
-      if (wkgMemPtr->processNumber == processId &&
-          ((wkgMemPtr->logicalStart <= logicalLow &&
-            wkgMemPtr->logicalStop >= logicalLow) ||
-           (wkgMemPtr->logicalStart <= logicalHigh &&
-            wkgMemPtr->logicalStop >= logicalHigh)))
-      {
-        copyString(displayStr, "After allocate overlap failure");
-        MEMdisplay(head_ptr, displayStr, displayFlag);
-        return false;
-      }
-    }
-
-    wkgMemPtr = head_ptr;
-    trlgPtr = head_ptr;
-
-    while (wkgMemPtr &&
-           (wkgMemPtr->memBlockState == MEM_USED ||
-            wkgMemPtr->physicalStop - wkgMemPtr->physicalStart + ONE <
-                requestedMemory))
-    {
-      trlgPtr = wkgMemPtr;
-      wkgMemPtr = wkgMemPtr->next_ptr;
-    }
-
-    if (wkgMemPtr->physicalStop - wkgMemPtr->physicalStart + ONE ==
-        requestedMemory)
-    {
-      MEMnode_recycle(wkgMemPtr, MEM_USED, processId, wkgMemPtr->physicalStart,
-                      wkgMemPtr->physicalStop, logicalLow, logicalHigh);
-      copyString(displayStr, "After allocate failure");
-      MEMdisplay(head_ptr, displayStr, displayFlag);
-      return false;
-    }
-    lowMemLoc = wkgMemPtr->physicalStart;
-    highMemLoc = lowMemLoc + requestedMemory - ONE;
-    tempNodePtr = MEMnode_add(lowMemLoc, highMemLoc, MEM_USED, processId,
-                              logicalLow, logicalHigh);
-
-    if (wkgMemPtr == head_ptr)
-    {
-      head_ptr = tempNodePtr;
-    }
-
-    else
-    {
-      trlgPtr->next_ptr = tempNodePtr;
-    }
-    wkgMemPtr->physicalStart = highMemLoc + 1;
-    tempNodePtr->next_ptr = wkgMemPtr;
-    copyString(displayStr, "After allocate success");
-    MEMdisplay(head_ptr, displayStr, displayFlag);
-
-    return true;
-  }
 }
 
-void CPUidle(ConfigDataType *config_dataptr, PCBdata *PCB_ptr)
+/*
+    Adds new memory block to end of process memory linked list
+*/
+memoryAllocationBlock* addMemoryBlock(memoryAllocationBlock *memory, memoryAllocationBlock* newMemory)
 {
-  char reportString[MAX_STR_LEN];
-  OpCodeType *temp_ptr = NULL;
-  int oneCycle = config_dataptr->procCycleRate;
-  bool interruptFound = false;
+    memoryAllocationBlock* firstMemPtr = memory;
 
-  copyString(reportString, "OS: CPU idle, all active processes blocked");
-  LOGdump(ADD_LOG, config_dataptr, reportString);
-  while (!interruptFound)
-  {
-    runTimer(oneCycle);
-    interruptFound =
-        interruptMNGR(INTERRUPT_CHECK, temp_ptr, PCB_ptr, config_dataptr);
-  }
-  copyString(reportString, "OS: CPU interrupt, end idle");
-  LOGdump(ADD_LOG, config_dataptr, reportString);
-}
-
-void runSim(ConfigDataType *config_dataptr, OpCodeType *meta_data_ptr)
-{
-  char reportString[MAX_STR_LEN];
-  char timeString[MAX_STR_LEN];
-  PCBdata *PCB_ptr;
-  PCBdata *PCB_wkg;
-  PCBdata *ID_ptr;
-  OpCodeType *OPC_ptr = NULL;
-
-  int currentPID = NULL_PID;
-  bool isPreemptive;
-  int lastPid = NULL_PID;
-  bool runFlag = true;
-  // IO thread arguments
-  void *IO_args[IO_ARGS];
-  // IO thread
-  pthread_t IO;
-  // IO pthread functions return code for create and join
-  int io_init = ZERO;
-
-  printf("Simulator Run");
-  printf("\n-------------\n");
-  accessTimer(ZERO_TIMER, timeString);
-
-  LOGdump(INIT_LOG, config_dataptr, "OS: Simulator start");
-  PCB_ptr = PCBcreate(config_dataptr, meta_data_ptr);
-
-  isPreemptive = meta_data_ptr->next_ptr->intArg3 == PREEMPTIVE_CODE;
-  // process interrupt requests
-  interruptMNGR(INIT_MNGR, OPC_ptr, PCB_ptr, config_dataptr);
-  // change state of PCB
-  PCBstate(config_dataptr, PCB_ptr);
-
-  // call Memory Mgmt Unit for processing requests
-  MMU(config_dataptr, meta_data_ptr);
-
-  // enter this loop while runFlag is = to true, this is set to true since
-  // we entered this function the needed flag was already called (-rs)
-  do
-  {
-    currentPID = PCBparse(config_dataptr, PCB_ptr);
-
-    if (currentPID == EXIT)
+    //if first memory allocation, sets memory
+    if (memory == NULL)
     {
-      LOGdump(ADD_LOG, config_dataptr, "OS: System stop");
-      runFlag = false;
+        firstMemPtr = newMemory;
     }
-
-    else if (currentPID == WAIT)
-    {
-      // CPUidle based on preemptive scheduling
-      CPUidle(config_dataptr, PCB_ptr);
-    }
-
     else
-    {
-      // get the next opcode
-      PCBstate(config_dataptr, PCB_ptr);
-
-      ID_ptr = PCBnode_pid(PCB_ptr, currentPID);
-
-      if (ID_ptr->OCcurr != NULL)
-      {
-        if (ID_ptr->OCcurr->intArg2 == 0)
+    {   
+        //loops through memory until next empty spot is found
+        while (memory->nextMemory != NULL)
         {
-          OPC_ptr = ID_ptr->OCcurr->next_ptr;
+            memory = memory->nextMemory;
         }
-
-        else
-        {
-          OPC_ptr = ID_ptr->OCcurr;
-        }
-      }
-
-      else
-      {
-        OPC_ptr = ID_ptr->OClist;
-      }
-
-      ID_ptr->OCcurr = OPC_ptr;
-
-      if ((compareString(OPC_ptr->command, "app") ||
-           compareString(OPC_ptr->strArg1, "start")) &&
-          isPreemptive && currentPID != lastPid)
-      {
-        PCB_wkg = PCBnode_pid(PCB_ptr, currentPID);
-
-        sprintf(reportString, "OS: Process %d selected with %d ms remaining",
-                currentPID, PCB_wkg->time_left);
-
-        LOGdump(ADD_LOG, config_dataptr, reportString);
-
-        sprintf(reportString, "OS: Process %d set from READY to RUNNING\n",
-                currentPID);
-
-        LOGdump(ADD_LOG, config_dataptr, reportString);
-      }
-
-      // these tested statements take into account possible commands and
-      // arguments and call necessary function based on such conditions
-      if (compareString(OPC_ptr->command, "app") ||
-          compareString(OPC_ptr->strArg1, "start"))
-      {
-        if (compareString(OPC_ptr->command, "app") ||
-            compareString(OPC_ptr->strArg1, "end"))
-        {
-          if (compareString(OPC_ptr->command, "mem"))
-          {
-            if (compareString(OPC_ptr->command, "dev"))
-            {
-              if (!compareString(OPC_ptr->command, "cpu"))
-              {
-                sprintf(reportString, "Process: %d, %s %s operation start",
-                        OPC_ptr->pid, OPC_ptr->command, OPC_ptr->strArg1);
-
-                LOGdump(ADD_LOG, config_dataptr, reportString);
-
-                PROCthread(config_dataptr, OPC_ptr, PCB_ptr);
-              }
-            }
-
-            else
-            {
-              sprintf(reportString, "Process: %d, %s %sput operation start",
-                      OPC_ptr->pid, OPC_ptr->strArg1, OPC_ptr->inOutArg);
-
-              LOGdump(ADD_LOG, config_dataptr, reportString);
-              OPC_ptr->intArg2 *= config_dataptr->ioCycleRate;
-
-              IO_args[IO_ARG_ONE] = (void *)config_dataptr;
-              IO_args[IO_ARG_TWO] = (void *)OPC_ptr;
-              IO_args[IO_ARG_THREE] = (void *)PCB_ptr;
-
-              io_init = pthread_create(&IO, NULL, IOthread_wrapper, IO_args);
-
-              if (io_init != ZERO)
-              {
-                fprintf(stderr, "Error: Failed to create IO thread\n");
-              }
-              io_init = pthread_join(IO, NULL);
-
-              if (io_init != ZERO)
-              {
-                fprintf(stderr, "Error: Failed to join IO thread\n");
-              }
-
-              PCB_wkg = PCBnode_pid(PCB_ptr, currentPID);
-              PCB_wkg->time_left -= OPC_ptr->intArg2;
-              OPC_ptr->intArg2 = ZERO;
-            }
-          }
-          else
-          {
-            sprintf(reportString, "Process: %d, mem %s request (%d, %d)",
-                    OPC_ptr->pid, OPC_ptr->strArg1, OPC_ptr->intArg2,
-                    OPC_ptr->intArg3);
-
-            LOGdump(ADD_LOG, config_dataptr, reportString);
-
-            if (MMU(config_dataptr, OPC_ptr))
-            {
-              sprintf(reportString, "Process: %d, successful mem %s request",
-                      OPC_ptr->pid, OPC_ptr->strArg1);
-
-              LOGdump(ADD_LOG, config_dataptr, reportString);
-
-              OPC_ptr->intArg2 = ZERO;
-            }
-            else
-            {
-              sprintf(reportString, "Process: %d, failed mem %s request\n",
-                      OPC_ptr->pid, OPC_ptr->strArg1);
-
-              LOGdump(ADD_LOG, config_dataptr, reportString);
-
-              sprintf(reportString, "OS: Segmentation fault, Process % d ended",
-                      OPC_ptr->pid);
-
-              LOGdump(ADD_LOG, config_dataptr, reportString);
-
-              copyString(OPC_ptr->strArg1, "clearOne");
-
-              MMU(config_dataptr, OPC_ptr);
-
-              PCB_wkg->state = EXIT_STATE;
-
-              sprintf(reportString, "OS: Process %d set to EXIT", currentPID);
-
-              LOGdump(ADD_LOG, config_dataptr, reportString);
-            }
-          }
-        }
-        else
-        {
-          sprintf(reportString, "OS: Process %d ended\n", currentPID);
-
-          LOGdump(ADD_LOG, config_dataptr, reportString);
-
-          OPC_ptr->pid = currentPID;
-
-          copyString(reportString, "clearOne");
-
-          copyString(OPC_ptr->strArg1, reportString);
-
-          MMU(config_dataptr, OPC_ptr);
-
-          PCB_wkg = PCBnode_pid(PCB_ptr, currentPID);
-
-          PCB_wkg->state = EXIT_STATE;
-
-          sprintf(reportString, "OS: Process %d set to EXIT", currentPID);
-
-          LOGdump(ADD_LOG, config_dataptr, reportString);
-        }
-      }
-      else
-      {
-        PCB_wkg = PCBnode_pid(PCB_ptr, currentPID);
-
-        sprintf(reportString, "OS: Process %d selected with %d ms remaining",
-                currentPID, PCB_wkg->time_left);
-
-        LOGdump(ADD_LOG, config_dataptr, reportString);
-
-        sprintf(reportString, "OS: Process %d set from READY to RUNNING\n",
-                currentPID);
-
-        LOGdump(ADD_LOG, config_dataptr, reportString);
-
-        OPC_ptr->intArg2 = ZERO;
-      }
+        memory->nextMemory = newMemory;
+        newMemory->prevMemory = memory;
     }
-    // interruptMNGR will get called again here for handling blocks for
-    // preemptive scheduling
-    lastPid = currentPID;
 
-  }
-
-  while (runFlag); // dirty trick for a do while loop
-
-  PCB_ptr = PCBnode_del(PCB_ptr);
-
-  copyString(OPC_ptr->strArg1, "clearAll");
-
-  MMU(config_dataptr, OPC_ptr);
-
-  LOGdump(ADD_LOG, config_dataptr, "OS: Simulation end\n");
-
-  LOGdump(DUMP_LOG, config_dataptr, reportString);
-
-  accessTimer(STOP_TIMER, reportString);
+    return firstMemPtr;
 }
+
+/*
+    deallocates memory from memory block
+*/
+void freeProcessMemory(memoryAllocationBlock* memory)
+{
+    if (memory != NULL)
+    {
+        freeProcessMemory(memory->nextMemory);
+        free(memory);
+        memory = NULL;
+    }
+}
+
+/*
+    Recursively goes through processes and frees allocated memory
+*/
+void freeProcesses(ProcessesList* processes)
+{
+    if (processes != NULL)
+    {
+        freeProcesses(processes->nextProcess);
+        free(processes->CurrentProcess);
+        free(processes);
+    }
+}
+
+/*
+    Adds new string node to string list to be outputted to file
+*/
+stringList* addNewStringNode(stringList* strings, char* buffer)
+{
+    //allocate memory
+    strings->nextString = (stringList*)malloc(sizeof(stringList));
+
+    //copy string into new stringList and set initial data
+    copyString(strings->nextString->string, buffer);
+    strings->nextString->nextString = NULL;
+    strings->nextString->prevString = strings;
+    return strings->nextString;
+}
+
+/*
+    Handles printing to monitor or saving to string list for file output
+*/
+stringList* printOrAddtoList(stringList* tempStrPtr, char buffer[], ConfigDataType* config)
+{
+    if (config->logToCode == LOGTO_BOTH_CODE || config->logToCode == LOGTO_MONITOR_CODE)
+    {   
+        printf("%s", buffer);
+    }
+
+    return addNewStringNode(tempStrPtr, buffer);;
+}
+
+
+/*
+    Recursively Free string list of allocated memory
+*/
+void freeStrings(stringList* strings)
+{
+    if (strings != NULL)
+    {
+        freeStrings(strings->nextString);
+        free(strings);
+        strings = NULL;
+    }
+}
+
+/*
+    Take all simulator logs and output to a log file as
+    specified in the config file, takes in config file
+    and stringList
+*/
+void printToFile(stringList* strOutput, ConfigDataType* config)
+{
+    //Create and set file pointer
+    FILE* outputFilePtr;
+
+    outputFilePtr = fopen(config->logToFileName, "w");
+
+
+    //loop through each line in stringList and outputting to file
+    while(strOutput != NULL)
+    {
+
+        fprintf(outputFilePtr, "%s", strOutput->string);
+        
+        strOutput = strOutput->nextString;
+
+    }
+
+    //CLOSE THE FILE
+    fclose(outputFilePtr);
+}
+
+/*
+    When output is only going to file, runs a loading symbol 
+    as a POSIX thread until the Simulator is finished, where 
+    this function as a thread should be cancelled
+*/
+void* printLoadingSymbol(void* timeUntilSymbolChange)
+{
+    //initialize symbols
+    static int pos = 0;
+    char cursor[4] = {'/','-','\\','|'};
+    while (true)
+    {
+        //print out current symbol
+        printf("%c\b", cursor[pos]);
+        //flush output for new symbol
+        fflush(stdout);
+        //move to next symbol
+        pos = (pos+1) % 4;
+        //set a buffer for the change of symbol
+        runTimer(timeUntilSymbolChange);
+    }
+}
+

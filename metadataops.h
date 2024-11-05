@@ -1,192 +1,189 @@
-//  File: metadataops.h
-//  Project: Sim03
-//  Secret ID: 708996
 
-#ifndef metadataops_h
-#define metadataops_h
+#ifndef METADATA_OPS_H
+#define METADATA_OPS_H
 
-#include "StringUtils.h"
-#include "StandardConstants.h"
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "datatypes.h"
+#include "StandardConstants.h"
+#include "StringUtils.h"
+
+//define enum for Op codes
+typedef enum {
+        BAD_ARG_VAL = -1,
+        NO_ACCESS_ERR,
+        MD_FILE_ACCESS_ERR,
+        MD_CORRUPT_DESCRIPTOR_ERR,
+        OPCMD_ACCESS_ERR,
+        CORRUPT_OPCMD_ERR,
+        CORRUPT_OPCMD_ARG_ERR,
+        UNBALANCED_START_END_ERR,
+        COMPLETE_OPCMD_FOUND_MSG,
+        LAST_OPCMD_FOUND_MSG 
+} OpCodeMessages;
 
 /*
 Name: addNode
-Process: adds metadata node to linked list recursively,
-         handles empty list condition
-Function Input/Parameters: pointer to head or next linked node (OpCodeType *)
-                           pointer to new node (OpCodeType *)
-Function Output/Parameters: none
-Function Output/Returned: pointer to previous node, or head node (OpCodeType *)
-Device Input/Keyboard: none
-Device Output/Monitor: none
+Process: adds a Node to the meta data linked list
+Function input/parameters: pointer to OpCodeType and new node
+Function output/parameters: none
+Function output/returned: pointer to new node added
+Device input/---: none
+Device output/---: none
 Dependencies: malloc, copyString
 */
 OpCodeType *addNode(OpCodeType *localPtr, OpCodeType *newNode);
 
 /*
 Name: displayMetaData
-Process: data dump/display of all op code items
-Function Input/Parameters: pointer to head of
-                           op code/metadata list (const OpCodeType *)
-Function Output/Parameters: none
-Function Output/Returned: none
-Device Input/Keyboard: none
-Device Output/Monitor: displayed as specified
-Dependencies: printf, compareString
+Process: displays metadata to user
+Function input/parameters: pointer to metadata linked list
+Function output/parameters: none
+Function output/returned: none
+Device input/---: none
+Device output/---: none
+Dependencies: printf
 */
-void displayMetaData(const OpCodeType *local_ptr);
+void displayMetaData(const OpCodeType *localPtr);
+
+/*
+Name: clearMetaDataList
+Process: clears metadata linkedlist
+Function input/parameters: metadata linked list
+Function output/parameters: none
+Function output/returned: none
+Device input/---: none
+Device output/---: none
+Dependencies: clearMetaDataList, free
+*/
+OpCodeType* clearMetaDataList(OpCodeType *localPtr);
+
+/*
+Name: getCommand
+Process: gets first command in a given string
+Function input/parameters: input string and index
+Function output/parameters: command str
+Function output/returned: int of cmd index
+Device input/---: none
+Device output/---: none
+Dependencies: none
+*/
+int getCommand(char* cmd, const char* inputStr, int index);
 
 /*
 Name: getMetaData
-Process: main driver function to upload, parse, and store list
-         of op code commands in a linked list
-Function Input/Parameters: file name (const char *)
-Function Output/Parameters: pointer to op code linked list
-                            head pointer (OpCodeType **),
-                            result message of function state
-                            after completion (char *)
-Function Output/Returned: Boolean result of operation (bool)
-Device Input/File: op code list uploaded
-Device Output/Device: none
-Dependencies: copyString, fopen, getStringToDelimiter, compareString, fclose,
-              malloc, getOpCommand, updateStartCount, updateEndCount,
-              clearMetaDataList, free, addNode
+Process: reads file of meta data and 
+Function input/parameters: Filename, metadate linked list
+Function output/parameters: endstatestring
+Function output/returned: bool for success or failure
+Device input/---: none
+Device output/---: none
+Dependencies: fopen, copyString, compareStrings, getStringToDelimiter
+              fclose, malloc, getOpCommand, updateStartCount, 
+              updateEndCount, clearMetaDataList, free
 */
-bool getMetaData(const char *fileName, OpCodeType **opCodeDataHead, char *endStateMsg);
-
-/*
-Name: clearMetaData
-Process: recursively traverses list, frees dynamically allocated nodes
-Function Input/Parameters: node op code (const OpCodeType *)
-Function Output/Parameters: none
-Function Output/Returned: NULL (OpCodeType *)
-Device Input/Keyboard: none
-Device Output/Monitor: none
-Dependencies: tbd
-*/
-OpCodeType *clearMetaDataList(OpCodeType *localPtr);
+bool getMetaData(const char* filename, OpCodeType **opcodeDataHead,
+    char* endStateMsg);
 
 /*
 Name: getOpCommand
-Process: acquires one op command line from a previously opened file,
-         parses it, and sets various struct members according
-         to the three letter command
-Function Input/Parameters: pointer to open file handle (FILE *)
-Function Output/Parameters: pointer to one op code struct (OpCodeType *)
-Function Output/Returned: coded result of operation (OpCodeMessages)
-Device Input/File: op code line uploaded
-Device Output/Device: none
-Dependencies: getStringToDelimiter, getCommand, copyString, verifyValidCommand,
-              compareString, getStringArg, verifyFirstStringArg, getNumberArg
+Process: gdetermine what commands were gotten and verify it as valid
+Function input/parameters: file and opCodeType
+Function output/parameters: command str
+Function output/returned: int of cmd index
+Device input/---: none
+Device output/---: none
+Dependencies: getStringToDelimiter, getCommand, copyString
+              verifyValidCommand, compareStrings, getStringArg,
+              getNumArg
 */
-int getCommand(char *cmd, const char *inputStr, int index);
+OpCodeMessages getOpCommand(FILE* filePtr, OpCodeType *inData);
 
 /*
-Name: getOpCommand
-Process: acquires one op command line from a previously opened file,
-         parses it, and sets various struct members according
-         to the three letter command
-Function Input/Parameters: pointer to open file handle (FILE *)
-Function Output/Parameters: pointer to one op code struct (OpCodeType *)
-Function Output/Returned: coded result of operation (OpCodeMessages)
-Device Input/File: op code line uploaded
-Device Output/Device: none
-Dependencies: getStringToDelimiter, getCommand, copyString, verifyValidCommand,
-              compareString, getStringArg, verifyFirstStringArg, getNumberArg
+Name: getNumberArg
+Process: find number of arguments passed in
+Function input/parameters: int number, input string, index
+Function output/parameters: none
+Function output/returned: int of arguments
+Device input/---: none
+Device output/---: none
+Dependencies: isDigit
 */
-OpCodeMessages getOpCommand(FILE *filePtr, OpCodeType *inData);
+int getNumberArg(int* number, const char* inputStr, int index);
 
 /*
 Name: getStringArg
-Process: starts at given index, captures and assembles string argument,
-         and returns as parameter
-Function Input/Parameters: input string (const char *), starting index (int)
-Function Output/Parameters: pointer to captured string argument (char *)
-Function Output/Returned: updated index for next function start
-Device Input/File: none
-Device Output/Device: none
-Dependencies: none
+Process: get argument of string
+Function input/parameters: char* strArg, inputStr, int index
+Function output/parameters: none
+Function output/returned: int of arguments
+Device input/---: none
+Device output/---: none
+Dependencies: isDigit
 */
 int getStringArg(char *strArg, const char *inputStr, int index);
 
 /*
-Name: getNumberArg
-Process: starts at given index, captures and assembles integer argument,
-         and returns as parameter
-Function Input/Parameters: input string (const char *), starting index (int)
-Function Output/Parameters: pointer to captured integer value
-Function Output/Returned: updated index for next function start
-Device Input/File: none
-Device Output/Device: none
-Dependencies: isDigit
-*/
-int getNumberArg(int *number, const char *inputStr, int index);
-
-/*
-Name: verifyFirstStringArg
-Process: checks for all possibilities of first argument string of op command
-Function Input/Parameters: test string (const char *)
-Function Output/Parameters: none
-Function Output/Returned: Boolean result of test (bool)
-Device Input/File: none
-Device Output/Device: none
-Dependencies: compareString
-*/
-bool verifyFirstStringArg(const char *strArg);
-
-/*
-Name: verifyValidCommand
-Process: checks for all possibilities of three-letter op command
-Function Input/Parameters: test string for command (char *)
-Function Output/Parameters: none
-Function Output/Returned: Boolean result of test (bool)
-Device Input/File: none
-Device Output/Device: none
-Dependencies: compareString
-*/
-bool verifyValidCommand(char *testCmd);
-
-/*
 Name: isDigit
-Process: tests character parameter for digit, returns true if is digit,
-         false otherwise
-Function Input/Parameters: test character (char)
-Function Output/Parameters: none
-Function Output/Returned: Boolean result of test (bool)
-Device Input/File: none
-Device Output/Device: none
+Process: tests if a char is a digit
+Function input/parameters: test character
+Function output/parameters: none
+Function output/returned: true for digit, false for not
+Device input/---: none
+Device output/---: none
 Dependencies: none
 */
 bool isDigit(char testChar);
 
 /*
+Name: updateEndCount
+Process: updates where the end index of a string is
+Function input/parameters: current count, test string
+Function output/parameters: none
+Function output/returned: change in count
+Device input/---: none
+Device output/---: none
+Dependencies: compareStrings
+*/
+int updateEndCount(int count, const char *opString);
+
+/*
 Name: updateStartCount
-Process: manages count of "start" arguments to be compared at end
-         of process input
-Function Input/Parameters: initial count (int)
-                           test string for "start" (const char *)
-Function Output/Parameters: none
-Function Output/Returned: updated count, if "start" string found,
-                          otherwise no change
-Device Input/File: none
-Device Output/Device: none
-Dependencies: captureString
+Process: updates where the start index of a string is
+Function input/parameters: current count, test string
+Function output/parameters: none
+Function output/returned: change in count
+Device input/---: none
+Device output/---: none
+Dependencies: compareStrings
 */
 int updateStartCount(int count, const char *opString);
 
 /*
-Name: updateEndCount
-Process: manages count of "end" arguments to be compared at end
-         of process input
-Function Input/Parameters: initial count (int)
-                           test string for "end" (const char *)
-Function Output/Parameters: none
-Function Output/Returned: updated count, if "end" string found,
-                          otherwise no change
-Device Input/File: none
-Device Output/Device: none
-Dependencies: captureString
+Name: verifyFirstStringArg
+Process: tests if first string argument is a valid input
+Function input/parameters: string
+Function output/parameters: none
+Function output/returned: bool if valid or not
+Device input/---: none
+Device output/---: none
+Dependencies: compareStrings
 */
-int updateEndCount(int count, const char *opString);
+bool verifyFirstStringArg(const char *strArg);
+
+/*
+Name: verifyFirstStringArg
+Process: tests if command string argument is a valid input
+Function input/parameters: string
+Function output/parameters: none
+Function output/returned: bool if valid or not
+Device input/---: none
+Device output/---: none
+Dependencies: compareStrings
+*/
+bool verifyValidCommand(char *testCmd);
+
 
 #endif
