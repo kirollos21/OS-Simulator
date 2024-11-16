@@ -1,168 +1,71 @@
+//  File: simulator.h
+//  Project: Sim04
+//  Secret ID: 708996
 
-#ifndef SIMULATOR_H
-#define SIMULATOR_H
+#ifndef simulator_h
+#define simulator_h
 
-// header files//
-#include <stdlib.h>
-#include <pthread.h>
-#include "datatypes.h"
-#include "simtimer.h"
 #include "StringUtils.h"
+#include "configops.h"
+#include "metadataops.h"
+#include "StandardConstants.h"
+#include "simtimer.h"
+#include "time.h"
+#include "datatypes.h"
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-// Data structures //
+void copyConfigData(ConfigDataType *dest, ConfigDataType *src);
 
-//current prototype stack
-typedef struct StackStruct
-{
-    void* data;
-    struct StackStruct* prevData;
+LOGnode *LOGnode_add(LOGnode *local_ptr, char *txt_input);
 
-    int StackSize;
-    int StackCapacity;
-} Stack;
+LOGnode *LOGnode_del(LOGnode *local_ptr);
 
-//current prototype for heap
-typedef struct HeapStruct
-{
-    void* data;
-    struct HeapStruct* leftChild;
-    struct HeapStruct* rightChild;
-} Heap;
+void LOGdump(int trigger, ConfigDataType *config_dataptr, char *txt_input);
 
-typedef struct memoryStruct
-{
-    int memoryBaseAddress;
-    int memoryAllocated;
+PCBdata *PCBnode_add(PCBdata *local_ptr, PCBdata *new_ptr);
 
-    struct memoryStruct* nextMemory;
-    struct memoryStruct* prevMemory;
+PCBdata *PCBnode_del(PCBdata *local_ptr);
 
-} memoryAllocationBlock;
+PCBdata *PCBnode_pid(PCBdata *local_ptr, int PCB_PID);
 
-//current type to handle PCB
-typedef struct ProcessControlBlockStruct
-{
-    int PID;
-    ProcessState state;
-    Stack stack;
-    Heap heap;
-    void* data;
-    void* text;
-    int burstTimeCPU;
-    int burstTimeIO;
-    OpCodeType* programStartNode;
+PCBdata *PCBcreate(ConfigDataType *config_dataptr, OpCodeType *md_head_ptr);
 
-} ProcessControlBlock;
+int PCBparse(ConfigDataType *config_dataptr, PCBdata *local_ptr);
 
-//List for holding pointers to all PCB's
-typedef struct ProcessesListStruct
-{
-    ProcessControlBlock* CurrentProcess;
-    struct ProcessesListStruct* prevProcess;
-    struct ProcessesListStruct* nextProcess;
-} ProcessesList;
+void PCBstate(ConfigDataType *config_dataptr, PCBdata *local_ptr);
 
-//List for holding all strings to be outputted to file
-typedef struct stringListStruct
-{
-    char string[MAX_OUTPUT_STRING_LENGTH];
+void PCBdisplay(PCBdata *head_ptr);
 
-    struct stringListStruct* nextString;
-    struct stringListStruct* prevString;
-} stringList;
+void IOthread(ConfigDataType *config_dataptr, OpCodeType *OPC_ptr, PCBdata *PCB_ptr);
 
-// functions //
-/*
-    This function takes a ConfigDataType and OpCodeType,
-    Then it finds all the processes present in the OpCode
-    and creates a PCB for each process, logging all os
-    operations. Once all processes are found, run each process and
-    once ended end the simulation and print logs to file
-*/
-void runSim(ConfigDataType *configData, OpCodeType *metaData);
+void *IOthread_wrapper(void *arg);
 
-/*
-    Create a new process control block which points to a OpCodeType as where the process starts
-    along with unique PID and any other data needed for an initial process, such as finding total
-    burst time, allocates memory for all needed
-    returns new PCB
-*/
-ProcessControlBlock* createProcess(ProcessControlBlock *process, OpCodeType *metaData, ConfigDataType *configData);
+void PROCthread(ConfigDataType *CNF_ptr, OpCodeType *OPC_ptr, PCBdata *PCB_ptr);
 
-/*
-    creates a memory block for a process and return a pointer to the block
-*/
-memoryAllocationBlock* createMemoryBlock(int memoryBase, int memoryOffset);
+OpCodeType *addInterrupt(OpCodeType *local_ptr, OpCodeType *new_ptr);
 
-/*
-    deallocates memory from memory block
-*/
-void freeProcessMemory(memoryAllocationBlock* memory);
+OpCodeType *removeOpCodeNode(OpCodeType *headPtr, OpCodeType *removedPtr);
 
-/*
-    check if memory is available in a process
-*/
-bool checkIfMemoryAvailable(memoryAllocationBlock *memory, memoryAllocationBlock* testMemory, ConfigDataType* config, memoryAllocationBlock** outMem);
+OpCodeType *getNextOpCode(PCBdata *PCB_ptr, int PCB_pid);
 
-/*
-    Adds new memory block to end of process memory linked list
-*/
-memoryAllocationBlock* addMemoryBlock(memoryAllocationBlock *memory, memoryAllocationBlock* newMemory);
+void OPCcopy(OpCodeType *destination, OpCodeType *source);
 
-/*
-    Check if a memory block has been reserved and is accessible by the membase and offset
-*/
-bool checkIfMemoryExists(memoryAllocationBlock* memory, int memBase, int memOffset, memoryAllocationBlock** outMem);
+bool interruptMNGR(Interrupts CTRL_ptr, OpCodeType *OPC_ptr, PCBdata *PCB_ptr, ConfigDataType *config_dataptr);
 
-/*
-    Goes through all metaData and finds each unique process, adding it to a process list
-*/
-ProcessesList* findAndCreateProcesses(ProcessesList* processes, OpCodeType *metaDataNode, ConfigDataType *configData);
+MEMnode *MEMnode_add(int physStart, int physEnd, int memState, int procNum, int logStart, int logStop);
 
-/*
-    This function gets the list of processes and depending on the scheduling selected for processes,
-    orders the process to conform and run as intended
-*/
-ProcessesList* orderProcesses(ProcessesList* processes, ConfigDataType *configData);
+void MEMnode_recycle(MEMnode *tempNode, int memState, int procNum, int phyStart, int phyStop, int logStart, int logStop);
 
-/*
-    Runs a given process, running as long as dictated by the config file, along with
-    outputting any info to log gile or monitor. Uses POSIX threads for IO
-*/
-stringList* runProcess(ProcessControlBlock* process, ConfigDataType* config, stringList* strings, memoryAllocationBlock* memory);
+void MEMrepair(MEMnode *MEM_ptr);
 
-/*
-    Recursively goes through processes and frees allocated memory
-*/
-void freeProcesses(ProcessesList* processes);
+void MEMdisplay(MEMnode *MEM_ptr, char *output_str, bool output_flag);
 
-/*
-    Adds new string node to string list to be outputted to file
-*/
-stringList* addNewStringNode(stringList* strings, char* buffer);
+bool MMU(ConfigDataType *config_dataptr, OpCodeType *OPC_ptr);
 
-/*
-    Handles printing to monitor or saving to string list for file output
-*/
-stringList* printOrAddtoList(stringList* tempStrPtr, char buffer[], ConfigDataType* config);
+void CPUidle(ConfigDataType *config_dataptr, PCBdata *PCB_ptr);
 
-/*
-    Recursively Free string list of allocated memory
-*/
-void freeStrings(stringList* strings);
-
-/*
-    Take all simulator logs and output to a log file as
-    specified in the config file, takes in config file
-    and stringList
-*/
-void printToFile(stringList* strOutput, ConfigDataType* config);
-
-/*
-    When output is only going to file, runs a loading symbol 
-    as a POSIX thread until the Simulator is finished, where 
-    this function as a thread should be cancelled
-*/
-void* printLoadingSymbol(void* timeUntilSymbolChange);
+void runSim(ConfigDataType *config_dataptr, OpCodeType *meta_data_ptr);
 
 #endif

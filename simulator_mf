@@ -1,10 +1,15 @@
+#  File: simulator_mf
+#  Project: Sim04
+#  Secret ID: 708996
+
 CC = gcc
 DEBUG = -g
 CFLAGS = -Wall -std=c99 -pedantic -c $(DEBUG)
 LFLAGS = -Wall -std=c99 -pedantic $(DEBUG)
+VALGRIND = valgrind --leak-check=full --show-leak-kinds=all
 
 Simulator : OS_SimDriver.o simulator.o metadataops.o configops.o StringUtils.o simtimer.o
-	$(CC) $(LFLAGS) OS_SimDriver.o simulator.o metadataops.o configops.o StringUtils.o simtimer.o -o sim.exe -lpthread
+	$(CC) $(FLAGS) OS_SimDriver.o simulator.o metadataops.o configops.o StringUtils.o simtimer.o -o sim04 -pthread
 
 OS_SimDriver.o : OS_SimDriver.c
 	$(CC) $(CFLAGS) OS_SimDriver.c
@@ -25,4 +30,7 @@ simtimer.o : simtimer.c simtimer.h
 	$(CC) $(CFLAGS) simtimer.c
 
 clean:
-	\rm *.o sim.exe
+	\rm *.o sim04
+
+memcheck: Simulator
+	$(VALGRIND) ./sim04

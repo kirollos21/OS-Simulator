@@ -1,197 +1,167 @@
+//  File: StringUtils.h
+//  Project: Sim04
+//  Secret ID: 708996
+
 #ifndef STRING_UTILS_H
 #define STRING_UTILS_H
 
-#define SUBSTRING_NOT_FOUND -1
-#include <stdio.h>
+#include "StandardConstants.h"
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 
-
 /*
-Name: compareStrings
-Process: compares text quantities (c-style strings) without case sensitivity
-         with the following outcomes:
-         - for equal sized strings, if the first parameter is alphabetically
-           greater than the second parameter, returns positive number
-         - for equal sized strings, if the first parameter is alphabetically
-           less than the second parameter, returns negative number
-         - for equal sized strings, if the first parameter is alphabetically
-           equal to the second parameter, returns zero
-         - for unequal sized strings with common letters up to the length
-           of the shortest string, returns difference in the length
-           of the strings
-Function input/parameters: strings to be compared(const char *)
-Function output/parameters: none
-Function output/returned: processed result as specified (int)
-Device input/---: none
-Device output/---: none
-Dependencies: getStringLength, toLowerCaseLetter
+Name: compareString
+Process: compares two strings with the following results:
+         if left string less than right string, returns less than zero
+         if left string greater than right string, returns greater than zero
+         if left string equals right string, returns zero
+Function Input/Parameters: c-style left and right strings (char *)
+Function Output/Parameters: none
+Function Output/Returned: result as specified (int)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: getStringLength
 */
-int compareStrings( const char *leftStr, const char *rightStr );
-
-/*
-Name: copyString
-Process: copies characters from source string to destination string
-         up to NULL_CHAR
-Function input/parameters: source string (const char *)
-Function output/parameters: destination string (char *)
-Function output/returned: none
-Device input/---: none
-Device output/---: none
-Dependencies: none
-*/
-void copyString( char *destStr, const char *srcStr );
-
-/*
-Name: getStringLength
-Process: finds the number of characters in (length of) a c-style string
-Function input/parameters: string to be processed (const char *)
-Function output/parameters: none
-Function output/returned: length of string (int)
-Device input/---: none
-Device output/---: none
-Dependencies: none
-*/
-int getStringLength( const char *str );
-/*
-Name: printSpaces
-Process: recursively prints the given number of spaces to the screen
-Function input/parameters: number of spaces to print (int)
-Function output/parameters: none
-Function output/returned: none
-Device input/---: none
-Device output/monitor: spaces printed as specified
-Dependencies: none
-*/
-void printSpaces( int numSpaces );
-
-/*
-Name: toLowerCaseLetter
-Process: if character is upper case letter, 
-         returns associated lower case letter,
-         otherwise has no effect
-Function input/parameters: character to be processed (char)
-Function output/parameters: none
-Function output/returned: character processed as specified (char)
-Device input/---: none
-Device output/---: none
-Dependencies: none
-*/
-char toLowerCaseLetter( char testChar );
+int compareString(const char *leftStr, const char *rightStr);
 
 /*
 Name: concatenateString
-Process: concatinate two strings into one
-Function input/parameters: destination string, source string
-Function output/parameters: concatenated String to destStr
-Function output/returned: 
-Device input/---: none
-Device output/---: none
-Dependencies: none
+Process: appends one string onto another
+Function Input/Parameters: c-style string (char *)
+Function Output/Parameters: c-style destination string (char *)
+Function Output/Returned: none
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: getStringLength
 */
-void concatenateString(char *destStr, const char* sourceStr);
+void concatenateString(char *destStr, const char *sourceStr);
+
+/*
+Name: copyString
+Process: copies one string into another overwriting
+         data in the destination string
+Function Input/Parameters: c-style string (char *)
+Function Output/Parameters: c-style destination string (char *)
+Function Output/Returned: none
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: getStringLength
+*/
+void copyString(char *destStr, const char *sourceStr);
 
 /*
 Name: findSubString
-Process: finds index of substring(if it exists) in testStr
-Function input/parameters: Source String and substring
-Function output/parameters: none
-Function output/returned: index of substring
-Device input/---: none
-Device output/---: none
-Dependencies: none
+Process: linear search for given substring within another string
+Function Input/Parameters: c-style source test string (char *)
+                           c-style source search string (char *)
+Function Output/Parameters: none
+Function Output/Returned: index of found substring, or
+                          SUBSTRING_NOT_FOUND constant if string not found
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: getStringLength
 */
-int findSubString(const char* testStr, const char* substring);
+int findSubString(const char *testStr, const char *searchSubStr);
 
 /*
 Name: getStringConstrained
-Process: get string from a file with certain parameters set
-Function input/parameters: File and options
-Function output/parameters: captured string if it was successful
-Function output/returned: bool for success or failure
-Device input/---: none
-Device output/---: none
+Process: captures a string from the input stream
+         with various constraints
+Function Input/Parameters: input stream (FILE *)
+                           clears leading non printable (bool),
+                           clears leading space (bool),
+                           stops at non printable (bool),
+                           stops at specified delimiter (char)
+                           Notes: consumes delimiter
+Function Output/Parameters: string returned (char *)
+Function Output/Returned: success of operation (bool)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: fgetc
+*/
+bool getStringConstrained(FILE *inStream, bool clearLeadingNonPrintable, bool clearLeadingSpace, bool stopAtNonPrintable, char delimiter, char *capturedString);
+
+/*
+Name: getStringLength
+Process: finds the length of a string by
+         counting characters up to the NULL_CHAR character
+Function Input/Parameters: c-style string (char *)
+Function Output/Parameters: none
+Function Output/Returned: length of string (int)
+Device Input/Keyboard: none
+Device Output/Monitor: none
 Dependencies: none
 */
-bool getStringConstrained(
-   FILE *inStream,
-   bool clearLeadingNonPrintable,
-   bool clearLeadingSpace,
-   bool stopAtNonPrintable,
-   char delimiter,
-   char* capturedString
-);
+int getStringLength(const char *testStr);
 
 /*
 Name: getStringToDelimiter
-Process: get string to a certain deliminated character
-Function input/parameters: File and options
-Function output/parameters: captured string if it was successful
-Function output/returned: bool for success or failure
-Device input/---: none
-Device output/---: none
+Process: captures a string from the input stream
+         to a specified delimiter;
+         Note: consumes delimiter
+Function Input/Parameters: input stream (FILE *)
+                           stops at specified delimiter (char *)
+Function Output/Parameters: string returned (char *)
+Function Output/Returned: success of operation (bool)
+Device Input/Keyboard: none
+Device Output/Monitor: none
 Dependencies: getStringConstrained
 */
-bool getStringToDelimiter (
-   FILE* inStream,
-   char delimiter,
-   char* capturedString
-   );
+bool getStringToDelimiter(FILE *inStream, char delimiter, char *capturedString);
 
 /*
 Name: getStringToLineEnd
-Process: get string from a file to end of line
-Function input/parameters: File
-Function output/parameters: captured string if it was successful
-Function output/returned: bool for success or failure
-Device input/---: none
-Device output/---: none
-Dependencies: none
+Process: captures a string from the input stream
+         to the end of the line
+Function Input/Parameters: input stream (FILE *)
+Function Output/Parameters: string returned (char *)
+Function Output/Returned: success of operation (bool)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: getStringConstrained
 */
-bool getStringToLineEnd(
-   FILE* inStream,
-   char *capturedString
-);
+bool getStringToLineEnd(FILE *inStream, char *capturedString);
 
 /*
 Name: getSubString
-Process: Finds a substring
-Function input/parameters: dest string, source string, start and end index
-Function output/parameters: destStr with substring
-Function output/returned: none
-Device input/---: none
-Device output/---: none
-Dependencies: 
+Process: compares sub string within larger string between two inclusive indices
+         returns empty string if either index is out of range,
+         assumes enough memory in destination string
+Function Input/Parameters: c-style source string (char *)
+                           start and end indices (int)
+Function Output/Parameters: c-style destination string (char *)
+Function Output/Returned: none
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: getStringLength, malloc, copyString, free
 */
-void getSubString(
-   char* destStr, const char *sourceStr,
-   int startIndex, int endIndex
-);
-
+void getSubString(char *destStr, const char *sourceStr, int startIndex, int endIndex);
 
 /*
 Name: setStrToLowerCase
-Process: using toLowerCase loops through string lower casing whole string
-Function input/parameters: dest string, source string
-Function output/parameters: lowercase string
-Function output/returned: none
-Device input/---: none
-Device output/---: none
+Process: iterates through string, sets any upper case letter
+         to lower case; no effect on other letters
+Function Input/Parameters: c-style source string (char *)
+Function Output/Parameters: c-style destination string (char *)
+Function Output/Returned: none
+Device Input/Keyboard: none
+Device Output/Monitor: none
 Dependencies: toLowerCase
 */
-void setStrToLowerCase(char* destStr, const char* sourceStr);
+void setStrToLowerCase(char *destStr, const char *sourceStr);
 
 /*
 Name: toLowerCase
-Process: finds index of substring(if it exists) in testStr
-Function input/parameters: character to be lowered
-Function output/parameters: none
-Function output/returned: lowercase char
-Device input/---: none
-Device output/---: none
+Process: if character is upper case, sets it to lower case;
+         otherwise returns character unchanged
+Function Input/Parameters: test character (char)
+Function Output/Parameters: none
+Function Output/Returned: character to set to lower case, if appropriate
+Device Input/Keyboard: none
+Device Output/Monitor: none
 Dependencies: none
 */
-char toLowerCase(char testChar);
-
+int toLowerCase(char testChar);
 
 #endif

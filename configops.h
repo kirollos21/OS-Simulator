@@ -1,125 +1,130 @@
+//  File: configops.h
+//  Project: Sim04
+//  Secret ID: 708996
 
-#ifndef CONFIG_OPS_H
-#define CONFIG_OPS_H
-
-#include <stdbool.h>
+#ifndef configops_h
+#define configops_h
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdbool.h>
+#include "StandardConstants.h"
 #include "datatypes.h"
 #include "StringUtils.h"
 
 /*
-Name: getConfigData
-Process: Goes through config file and finds filenames
-Function input/parameters: filename
-Function output/parameters: configData, endStateMsg
-Function output/returned: bool for success or failure
-Device input/---: none
-Device output/---: none
-Dependencies: none
+Name: displayConfigData
+Process: screen dump/display of all config data
+Function Input/Parameters: pointer to config data structure (ConfigDataType *)
+Function Output/Parameters: none
+Function Output/Returned: none
+Device Input/Keyboard: none
+Device Output/Monitor: displayed as specified
+Dependencies: tbd
 */
-bool getConfigData(const char* filename, ConfigDataType **configData,
-    char* endStateMsg);
+void displayConfigData(ConfigDataType *configData);
+
+/*
+Name: clearConfigData
+Process: frees dynamically allocated config data structure
+         if it has not already been freed
+Function Input/Parameters: pointer to config data structure (ConfigDataType *)
+Function Output/Parameters: none
+Function Output/Returned: NULL (ConfigDataType *)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: tbd
+*/
+ConfigDataType *clearConfigData(ConfigDataType *configData);
+
+/*
+Name: getConfigData
+Process: Driver function for capturing configuration data from a config file
+Function Input/Parameters: file name (const char *)
+Function Output/Parameters: pointer to config data pointer (ConfigDataType **),
+                            end/result state message pointer (char *)
+Function Output/Returned: Boolean result of data access operation (bool)
+Device Input/Keyboard: config data uploaded
+Device Output/Monitor: none
+Dependencies: tbd
+*/
+bool getConfigData(const char *fileName, ConfigDataType **configData, char *endStateMsg);
 
 /*
 Name: getCpuSchedCode
-Process: Determine which Cpu schedule code is in config
-Function input/parameters: string
-Function output/parameters: none
-Function output/returned: corresponding config code
-Device input/---: none
-Device output/---: none
-Dependencies: compareStrings
+Process: converts cpu schedule string to code (all scheduling possibilities)
+Function Input/Parameters: lower case code string (const char *)
+Function Output/Parameters: none
+Function Output/Returned: cpu schedule code (ConfigDataCodes)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: compareString
 */
-ConfigDataCodes getCpuSchedCode(const char *lowerCaseCodeStr);
+ConfigDataCodes getCPUSchedCode(const char *lowerCaseCodeStr);
 
 /*
-Name: getDataLineCode
-Process: Determine which Cpu data code is in config
-Function input/parameters: string
-Function output/parameters: none
-Function output/returned: corresponding data code
-Device input/---: none
-Device output/---: none
-Dependencies: compareStrings
+Name: configCodeToString
+Process: utility function converts configuration code numbers
+         to the string they represent
+Function Input/Parameters: configuration code (int)
+Function Output/Parameters: resulting output string (char *)
+Function Output/Returned: none
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: copyString
 */
-ConfigCodeMessages getDataLineCode(const char* dataBuffer);
-
-/*
-Name: getLogToCode
-Process: Determine which log code is in config
-Function input/parameters: string
-Function output/parameters: none
-Function output/returned: corresponding log code
-Device input/---: none
-Device output/---: none
-Dependencies: compareStrings
-*/
-ConfigDataCodes getLogToCode(const char *lowerCaseLogToStr);
+void configCodeToString(int code, char *outString);
 
 /*
 Name: stripTrailingSpaces
-Process: Replaces all trailing spaces of a string with NULL chars
-Function input/parameters: string
-Function output/parameters: stripped string
-Function output/returned: none
-Device input/---: none
-Device output/---: none
+Process: removes trailing spaces from input config leader lines
+Function Input/Parameters: config leader line string (char *)
+Function Output/Parameters: updated config leader line string (char *)
+Function Output/Returned: configuration data code value (ConfigDataCodes)
+Device Input/Keyboard: none
+Device Output/Monitor: none
 Dependencies: getStringLength
 */
 void stripTrailingSpaces(char *str);
 
 /*
+Name: getLogToCode
+Process: converts "Log to" text to configuration data code
+         (three log to strings)
+Function Input/Parameters: lower case Log to string (const char *)
+Function Output/Parameters: none
+Function Output/Returned: configuration data code value (ConfigDataCodes)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: compareString
+*/
+ConfigDataCodes getLogToCode(const char *lowerCaseLogToStr);
+
+/*
+Name: getDataLineCode
+Process: converts leader lines string to configuration code value
+         (all config file leader lines)
+Function Input/Parameters: config leader line string (const char *)
+Function Output/Parameters: none
+Function Output/Returned: configuration code value (ConfigCodeMessages)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: compareString
+*/
+ConfigCodeMessages getDataLineCode(const char *dataBuffer);
+
+/*
 Name: valueInRange
-Process: Determines if a certain value is in range for a 
-        certain code
-Function input/parameters: codes
-Function output/parameters: none
-Function output/returned: result if value 
-                          is in correct range for code
-Device input/---: none
-Device output/---: none
-Dependencies: compareStrings
+Process: checks for config data values in range, including string values
+         (all config data values)
+Function Input/Parameters: line code number for specific config value (int),
+                           integer value, as needed (int),
+                           double value, as needed (double),
+                           string value, as needed (const char *)
+Function Output/Parameters: none
+Function Output/Returned: Boolean result of range test (bool)
+Device Input/Keyboard: none
+Device Output/Monitor: none
+Dependencies: getStringLength
 */
-bool valueInRange(int lineCode, int intVal, 
-                  double doubleVal, const char *lowerCaseStringVal);
-
-/*
-Name: displayConfigData
-Process: Displays config file to the user
-Function input/parameters: config data
-Function output/parameters: prints out config data
-Function output/returned: none 
-Device input/---: none
-Device output/---: none
-Dependencies: printf
-*/
-void displayConfigData(ConfigDataType *configData);
-
-/*
-Name: configCodeToString
-Process: Determines if a certain value is in range for a 
-        certain code
-Function input/parameters: codes
-Function output/parameters: none
-Function output/returned: result if value 
-                          is in correct range for code
-Device input/---: none
-Device output/---: none
-Dependencies: compareStrings
-*/
-void configCodeToString(int code, char *outString);
-
-/*
-Name: clearConfigData
-Process: empties configData struct for future use
-Function input/parameters: ConfigDataType
-Function output/parameters: none
-Function output/returned: empty ConfigDataType
-Device input/---: none
-Device output/---: none
-Dependencies: free
-*/
-ConfigDataType* clearConfigData(ConfigDataType *configData);
+bool valueInRange(int lineCode, int intVal, double doubleVal, const char *lowerCaseStringVal);
 
 #endif
